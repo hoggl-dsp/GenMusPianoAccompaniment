@@ -15,6 +15,7 @@ dependencies = [
     "pesto-pitch",
     "symusic",
     "matplotlib",
+    "music21",
 ]
 
 [tool.setuptools]
