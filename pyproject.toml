@@ -12,12 +12,10 @@ dependencies = [
     "torch",
     "torchaudio",
     "librosa",
-    "madmom",
     "pesto-pitch",
+    "symusic",
+    "matplotlib",
 ]
 
 [tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.pytest]
-testpaths = ["tests"]
+packages = ["songify"]
