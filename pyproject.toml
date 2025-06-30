@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "songify"
+version = "0.1.0"
+description = "Generate music piano accompaniment"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "torch",
+    "torchaudio",
+    "librosa",
+    "madmom",
+    "pesto-pitch",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.pytest]
+testpaths = ["tests"]
