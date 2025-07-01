@@ -1,4 +1,7 @@
 import symusic
+import symusic.types
+
+import torch
 
 def melody_to_score(melody: list[tuple[int, float, float, float]]):
     """
@@ -67,7 +70,11 @@ def melody_with_harmony_to_score(
     # score.tracks[0].notes.sort(key=lambda note: note.time)
     return score
 
-
+def synthesise_score(score: symusic.types.Score, sample_rate: int = 44100) -> torch.Tensor:
+    """
+    Synthesize the given symusic Score into audio (as a torch Tensor).
+    """
+    return torch.from_numpy(symusic.Synthesizer(sample_rate=sample_rate).render(score=score, stereo=True))
 
 if __name__ == '__main__':
     # Example usage
