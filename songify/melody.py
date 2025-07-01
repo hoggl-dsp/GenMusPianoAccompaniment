@@ -87,7 +87,45 @@ def extract_melody(
     pitch_strategy: str = 'pesto',
     frame_size_millis: int = 10,
 ):
+    """
+    Extract the melody from an audio file.
+    This function takes an audio tensor and its sample rate, and extracts the melody
+    by first estimating the pitch, then applying post-processing steps to improve the 
+    quality of the extracted melody.
+    Args:
+        audio (torch.Tensor): The audio signal as a PyTorch tensor.
+        sample_rate (int): The sample rate of the audio signal in Hz.
+        pitch_strategy (str, optional): The strategy to use for pitch estimation. 
+            Default is 'pesto'.
+        frame_size_millis (int, optional): The size of each frame in milliseconds for 
+            pitch estimation. Default is 10.
+    Returns:
+        list: A list of tuples, each containing (pitch, start_time, duration, velocity) 
+              for a note in the melody.
+              - pitch: MIDI note number
+              - start_time: start time in seconds
+              - duration: note duration in seconds
+              - velocity: note velocity/volume (0.0-1.0)
+    Notes:
+        The function applies the following post-processing steps:
+        1. Removes pitches with low confidence
+        2. Applies median filtering to reduce noise
+        3. Merges consecutive notes of the same pitch
+    """
     timesteps, pitches, pitch_confidence = estimate_pitch(audio, sample_rate, frame_size_millis, pitch_strategy)
+
+    timesteps = timesteps / 1000.0 # Convert to seconds
+
+    # Zero out pitches with low confidence
+    pitches[pitch_confidence < 0.5] = 0
+
+    # Median Filtering
+    median_filter_size = 3
+    median_filter_radius = median_filter_size // 2
+    for i in range(median_filter_radius, len(pitches) - median_filter_radius):
+        pitches[i] = torch.median(pitches[i - median_filter_radius: i + median_filter_radius + 1])
+
+    
 
     # voice_activity = vad(audio, sample_rate, frame_size_millis)
     # # print(voice_activity.shape)
@@ -105,12 +143,32 @@ def extract_melody(
 
     # # plt.show()
 
-    start_times = (timesteps / 1000.0).tolist()
-    durations = (torch.ones_like(timesteps) * 0.99 * (frame_size_millis / 1000.0)).tolist()
-    pitches = pitches.tolist()
-    velocities = pitch_confidence.tolist()
+    # start_times = (timesteps / 1000.0).tolist()
+    # durations = (torch.ones_like(timesteps) * 0.99 * (frame_size_millis / 1000.0)).tolist()
+    # pitches = pitches.tolist()
+    # velocities = pitch_confidence.tolist()
 
-    return list(zip(pitches, start_times, durations, velocities))
+    frame_size_secs = frame_size_millis / 1000.0
+
+    melody = []
+    for i, (timestep, pitch, confidence) in enumerate(zip(timesteps, pitches, pitch_confidence)):
+        if pitch == 0:
+            continue
+
+        if len(melody) > 0 and pitch == melody[-1][0]:
+            last_pitch, last_start, duration, last_vel = melody[-1]
+
+            duration += (timestep.item() - last_start)
+            melody.pop()
+            melody.append((last_pitch, last_start, duration, last_vel))
+            continue
+
+        start_time = timestep.item()
+        duration = frame_size_secs
+        velocity = confidence.item()
+        melody.append((pitch.item(), start_time, duration, velocity))
+
+    return melody
 
 
     
