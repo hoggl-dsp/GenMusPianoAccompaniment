@@ -337,30 +337,30 @@ class FitnessEvaluator:
                    score += 1
         return score / (len(chord_sequence) - 1)
 
-    def _functional_harmony(self, chord_sequence):
-        """
-        Evaluates the chord sequence based on principles of functional harmony.
-        This function checks for the presence of key harmonic functions such as
-        the tonic at the beginning and end of the sequence and the presence of
-        subdominant and dominant chords. Adherence to these harmonic
-        conventions is rewarded with a higher score.
+    # def _functional_harmony(self, chord_sequence):
+    #     """
+    #     Evaluates the chord sequence based on principles of functional harmony.
+    #     This function checks for the presence of key harmonic functions such as
+    #     the tonic at the beginning and end of the sequence and the presence of
+    #     subdominant and dominant chords. Adherence to these harmonic
+    #     conventions is rewarded with a higher score.
 
-        Parameters:
-            chord_sequence (list): The chord sequence to evaluate.
+    #     Parameters:
+    #         chord_sequence (list): The chord sequence to evaluate.
 
-        Returns:
-            float: A score representing the extent to which the sequence
-                adheres to traditional functional harmony, normalized by
-                the number of checks performed.
-        """
-        score = 0
-        if chord_sequence[0] in ["C", "Am"]:
-            score += 1
-        if chord_sequence[-1] in ["C"]:
-            score += 1
-        if "F" in chord_sequence and "G" in chord_sequence:
-            score += 1
-        return score / 3
+    #     Returns:
+    #         float: A score representing the extent to which the sequence
+    #             adheres to traditional functional harmony, normalized by
+    #             the number of checks performed.
+    #     """
+    #     score = 0
+    #     if chord_sequence[0] in ["C", "Am"]:
+    #         score += 1
+    #     if chord_sequence[-1] in ["C"]:
+    #         score += 1
+    #     if "F" in chord_sequence and "G" in chord_sequence:
+    #         score += 1
+    #     return score / 3
 
 
 def create_score(melody, chord_sequence, chord_mappings):
@@ -448,10 +448,9 @@ def main():
         ("C5", 2)  # How I wonder what you are!
     ]
     weights = {
-        "chord_melody_congruence": 0.5,
-        "chord_variety": 0.3,
-        "harmonic_flow": 0.1,
-        "functional_harmony": 0.1
+        "chord_melody_congruence": 0.3,
+        "chord_variety": 0.2,
+        "harmonic_flow": 0.5,
     }
 
     # Instantiate objects for generating harmonization
@@ -465,7 +464,7 @@ def main():
     harmonizer = GeneticMelodyHarmonizer(
         melody_data=melody_data,
         chords=list(chord_mappings.keys()),
-        population_size=100,
+        population_size=1000,
         mutation_rate=0.05,
         fitness_evaluator=fitness_evaluator,
     )
