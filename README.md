@@ -7,7 +7,7 @@ A system for generating musical accompaniment to voice, whether sung, spoken or 
 graph TD;
     A{Audio}-->P{Pitch}<br>1. freq/frame<br>2. confidence/frame;
     A-->D{Descriptors}<br>1. loudness/frame<br>2. MFCCs? (centroid)
-    D-->M{Melody}<br>
+    D-->M{Melody}<br>list[tuple[pitch,start,duration, velocity]]
     P-->M
     
 ```
