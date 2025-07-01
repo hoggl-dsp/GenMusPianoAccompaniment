@@ -158,7 +158,7 @@ def extract_melody(
         if len(melody) > 0 and pitch == melody[-1][0]:
             last_pitch, last_start, duration, last_vel = melody[-1]
 
-            duration += (timestep.item() - last_start)
+            duration += frame_size_secs
             melody.pop()
             melody.append((last_pitch, last_start, duration, last_vel))
             continue
