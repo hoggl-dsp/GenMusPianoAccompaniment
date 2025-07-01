@@ -141,5 +141,5 @@ def build_preferred_transitions(chord_mappings):
 # Generate and print
 preferred_transitions = build_preferred_transitions(chord_mappings)
 
-for chord, transitions in preferred_transitions.items():
-    print(f"{chord}: {transitions}")
+# for chord, transitions in preferred_transitions.items():
+#     print(f"{chord}: {transitions}")
