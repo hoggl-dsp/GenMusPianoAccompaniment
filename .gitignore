@@ -4,3 +4,6 @@
 *.DS_Store
 
 **__pycache__**
+
+output/
+!output/.gitkeep
