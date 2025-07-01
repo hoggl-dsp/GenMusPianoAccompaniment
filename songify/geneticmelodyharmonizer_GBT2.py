@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from preferred_chord_transitions import preferred_transitions, chord_mappings
 import music21
 
+
 @dataclass(frozen=True)
 class MelodyData:
     """
@@ -94,6 +95,11 @@ class GeneticMelodyHarmonizer:
             parents = self._select_parents()
             new_population = self._create_new_population(parents)
             self._population = new_population
+            # # Print average score
+            # average_fitness = sum(
+            #     self.fitness_evaluator.evaluate(seq) for seq in self._population
+            # ) / self.population_size
+            # print(f"Average fitness in generation: {average_fitness:.2f}")
         best_chord_sequence = (
             self.fitness_evaluator.get_chord_sequence_with_highest_fitness(
                 self._population
@@ -337,33 +343,7 @@ class FitnessEvaluator:
                    score += 1
         return score / (len(chord_sequence) - 1)
 
-    # def _functional_harmony(self, chord_sequence):
-    #     """
-    #     Evaluates the chord sequence based on principles of functional harmony.
-    #     This function checks for the presence of key harmonic functions such as
-    #     the tonic at the beginning and end of the sequence and the presence of
-    #     subdominant and dominant chords. Adherence to these harmonic
-    #     conventions is rewarded with a higher score.
-
-    #     Parameters:
-    #         chord_sequence (list): The chord sequence to evaluate.
-
-    #     Returns:
-    #         float: A score representing the extent to which the sequence
-    #             adheres to traditional functional harmony, normalized by
-    #             the number of checks performed.
-    #     """
-    #     score = 0
-    #     if chord_sequence[0] in ["C", "Am"]:
-    #         score += 1
-    #     if chord_sequence[-1] in ["C"]:
-    #         score += 1
-    #     if "F" in chord_sequence and "G" in chord_sequence:
-    #         score += 1
-    #     return score / 3
-
-
-def create_score(melody, chord_sequence, chord_mappings):
+def create_score(melody, starts, chord_sequence, chord_mappings):
     """
     Create a music21 score with a given melody and chord sequence.
 
@@ -382,9 +362,10 @@ def create_score(melody, chord_sequence, chord_mappings):
     chord_part = music21.stream.Part()
 
     current_offset = 0
-    for (note_name, duration), chord_name in zip(melody, chord_sequence):
-        melody_note = music21.note.Note(note_name, quarterLength=duration)
-        melody_note.offset = current_offset
+    for (note_name, duration), start, chord_name in zip(melody, starts, chord_sequence):
+        melody_note = music21.note.Note(note_name)
+        melody_note.seconds = duration
+        melody_note.offset = start
         melody_part.append(melody_note)
 
         chord_notes = chord_mappings.get(chord_name, [])
@@ -403,50 +384,55 @@ def create_score(melody, chord_sequence, chord_mappings):
 
 def main():
 
-    input_melody = [
-        ("C5", 1),
-        ("C5", 1),
-        ("G5", 1),
-        ("G5", 1),
-        ("A5", 1),
-        ("A5", 1),
-        ("G5", 2),  # Twinkle, twinkle, little star,
-        ("F5", 1),
-        ("F5", 1),
-        ("E5", 1),
-        ("E5", 1),
-        ("D5", 1),
-        ("D5", 1),
-        ("C5", 2),  # How I wonder what you are!
-        ("G5", 1),
-        ("G5", 1),
-        ("F5", 1),
-        ("F5", 1),
-        ("E5", 1),
-        ("E5", 1),
-        ("D5", 2),  # Up above the world so high,
-        ("G5", 1),
-        ("G5", 1),
-        ("F5", 1),
-        ("F5", 1),
-        ("E5", 1),
-        ("E5", 1),
-        ("D5", 2),  # Like a diamond in the sky.
-        ("C5", 1),
-        ("C5", 1),
-        ("G5", 1),
-        ("G5", 1),
-        ("A5", 1),
-        ("A5", 1),
-        ("G5", 2),  # Twinkle, twinkle, little star,
-        ("F5", 1),
-        ("F5", 1),
-        ("E5", 1),
-        ("E5", 1),
-        ("D5", 1),
-        ("D5", 1),
-        ("C5", 2)  # How I wonder what you are!
-    ]
+    data = [
+        (57, 0.15000000596046448, 0.44999999999999996, 1.0), 
+        (55, 0.6000000238418579, 0.15000000000000002, 1.0), 
+        (57, 0.75, 0.05, 1.0), 
+        (58, 0.800000011920929, 0.15000000000000002, 1.0), 
+        (52, 0.949999988079071, 0.05, 1.0), 
+        (50, 1.0, 0.3, 0.9999992847442627), 
+        (52, 1.2999999523162842, 0.05, 1.0), 
+        (54, 1.350000023841858, 0.15000000000000002, 1.0), 
+        (51, 2.049999952316284, 0.2, 1.0), 
+        (49, 2.25, 0.05, 1.0), 
+        (47, 2.299999952316284, 0.1, 0.9999985694885254), 
+        (52, 2.4000000953674316, 0.1, 1.0), 
+        (51, 2.5, 0.05, 1.0), 
+        (48, 2.549999952316284, 0.1, 1.0), 
+        (47, 2.6500000953674316, 0.1, 1.0), 
+        (46, 2.75, 0.05, 1.0), 
+        (48, 2.9000000953674316, 0.15000000000000002, 1.0), 
+        (47, 3.049999952316284, 0.05, 1.0),  
+        (55, 3.200000047683716, 0.1, 1.0), 
+        (49, 3.299999952316284, 0.05, 1.0), 
+        (47, 3.450000047683716, 0.3, 1.0), 
+        (48, 3.75, 0.15000000000000002, 1.0), 
+        (53, 3.9000000953674316, 0.1, 1.0), 
+        (44, 4.0, 0.15000000000000002, 0.4803946912288666), 
+        (45, 4.150000095367432, 0.1, 1.0), 
+        (46, 4.25, 0.05, 1.0), 
+        (50, 4.300000190734863, 0.05, 1.0), 
+        (52, 4.349999904632568, 0.1, 1.0), 
+        (41, 4.550000190734863, 0.2, 0.9998537302017212), 
+        (39, 4.75, 0.05, 0.9999998807907104), 
+        (51, 5.599999904632568, 0.1, 1.0), 
+        (53, 6.0, 0.1, 1.0), 
+        (52, 6.099999904632568, 0.05, 1.0), 
+        (51, 6.150000095367432, 0.05, 1.0), 
+        (50, 6.199999809265137, 0.2, 0.9975391626358032), 
+        (49, 6.400000095367432, 0.05, 0.9998569488525391), 
+        (48, 6.449999809265137, 0.1, 1.0), 
+        (47, 6.550000190734863, 0.1, 0.9991744160652161), 
+        (43, 7.0, 0.15000000000000002, 1.0), 
+        (42, 7.150000095367432, 0.1, 0.9995341300964355), 
+        (41, 7.25, 0.05, 1.0), 
+        (40, 7.300000190734863, 0.1, 1.0), 
+        (42, 7.400000095367432, 0.1, 1.0), 
+        (50, 7.599999904632568, 0.1, 0.9998584985733032)]
+    
+    input_melody = [ (note[0], note[2]) for note in data ]  # Extract pitches from the melody
+    starts = [ note[1] for note in data ]  # Extract start times from the melody
+ 
     weights = {
         "chord_melody_congruence": 0.3,
         "chord_variety": 0.2,
@@ -464,7 +450,7 @@ def main():
     harmonizer = GeneticMelodyHarmonizer(
         melody_data=melody_data,
         chords=list(chord_mappings.keys()),
-        population_size=1000,
+        population_size=100, #TODO: Change this to increase
         mutation_rate=0.05,
         fitness_evaluator=fitness_evaluator,
     )
@@ -474,7 +460,7 @@ def main():
 
     # Render to music21 score and show it
     music21_score = create_score(
-        input_melody, generated_chords, chord_mappings
+        input_melody, starts, generated_chords, chord_mappings
     )
     music21_score.show()
 
