@@ -37,6 +37,10 @@ def main():
         melody=extracted_melody,
     )
 
+
+    score.dump_midi(os.path.join('output', 'melody.mid'))
+    
+
     # Synthesize the score to audio, using symusic default piano soundfont
     piano_audio = utils.synthesise_score(score, sample_rate=sample_rate)
     
@@ -44,7 +48,7 @@ def main():
     expanded_audio = audio.unsqueeze(0).expand((2, -1))
     if expanded_audio.size(1) < piano_audio.size(1):
         expanded_audio = torch.cat((expanded_audio, torch.zeros((2, piano_audio.size(1) - expanded_audio.size(1)))), dim=-1)
-    mixed_audio = 0.5 * expanded_audio + piano_audio
+    mixed_audio = expanded_audio + piano_audio
 
     torchaudio.save(os.path.join('output', 'melody.wav'), mixed_audio, sample_rate)
 
