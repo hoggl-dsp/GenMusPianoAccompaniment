@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass
-from preferred_chord_transitions import preferred_transitions
+from preferred_chord_transitions import preferred_transitions, chord_mappings
 import music21
 
 @dataclass(frozen=True)
@@ -403,7 +403,7 @@ def create_score(melody, chord_sequence, chord_mappings):
 
 def main():
 
-    twinkle_twinkle_melody = [
+    input_melody = [
         ("C5", 1),
         ("C5", 1),
         ("G5", 1),
@@ -453,67 +453,9 @@ def main():
         "harmonic_flow": 0.1,
         "functional_harmony": 0.1
     }
-    chord_mappings = {
-
-        # major chords
-        "C": ["C", "E", "G"],
-        "C#": ["C#", "E#", "G#"],
-        "D": ["D", "F#", "A"],
-        "D#": ["D#", "G", "A#"],
-        "E": ["E", "G#", "B"],
-        "F": ["F", "A", "C"],
-        "F#": ["F#", "A#", "C#"],
-        "G": ["G", "B", "D"],
-        "G#": ["G#", "C", "D#"],
-        "A": ["A", "C#", "E"],      
-        "A#": ["A#", "D", "F"],
-        "B": ["B", "D#", "F#"],
-        
-        # minor chords
-        "Cm": ["C", "Eb", "G"],
-        "C#m": ["C#", "E", "G#"],
-        "Dm": ["D", "F", "A"],
-        "D#m": ["D#", "F#", "A#"],
-        "Em": ["E", "G", "B"],
-        "Fm": ["F", "Ab", "C"],
-        "F#m": ["F#", "A", "C#"],
-        "Gm": ["G", "Bb", "D"],
-        "G#m": ["G#", "B", "D#"],
-        "Am": ["A", "C", "E"],
-        "A#m": ["A#", "C#", "F"],
-        "Bm": ["B", "D", "F#"],
-        
-        # diminished chords
-        "Cdim": ["C", "Eb", "Gb"],
-        "C#dim": ["C#", "E", "G"],
-        "Ddim": ["D", "F", "Ab"],
-        "D#dim": ["D#", "F#", "A"],
-        "Edim": ["E", "G", "Bb"],
-        "Fdim": ["F", "Ab", "C"],
-        "F#dim": ["F#", "A", "C"],
-        "Gdim": ["G", "Bb", "Db"],
-        "G#dim": ["G#", "B", "D"],  
-        "Adim": ["A", "C", "Eb"],
-        "A#dim": ["A#", "C#", "E"],
-        "Bdim": ["B", "D", "F"],
-
-        # augmented chords    
-        "Caug": ["C", "E", "G#"],
-        "C#aug": ["C#", "E#", "G##"],
-        "Daug": ["D", "F#", "A#"],
-        "D#aug": ["D#", "G", "B"],
-        "Eaug": ["E", "G#", "B#"],
-        "Faug": ["F", "A", "C#"],
-        "F#aug": ["F#", "A#", "C##"],
-        "Gaug": ["G", "B", "D#"],
-        "G#aug": ["G#", "C", "E"],
-        "Aaug": ["A", "C#", "E#"],
-        "A#aug": ["A#", "D", "F##"],
-        "Baug": ["B", "D#", "F##"] 
-    }
 
     # Instantiate objects for generating harmonization
-    melody_data = MelodyData(twinkle_twinkle_melody)
+    melody_data = MelodyData(input_melody)
     fitness_evaluator = FitnessEvaluator(
         melody_data=melody_data,
         weights=weights,
@@ -533,7 +475,7 @@ def main():
 
     # Render to music21 score and show it
     music21_score = create_score(
-        twinkle_twinkle_melody, generated_chords, chord_mappings
+        input_melody, generated_chords, chord_mappings
     )
     music21_score.show()
 
