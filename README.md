@@ -5,11 +5,15 @@ A system for generating musical accompaniment to voice, whether sung, spoken or 
 ## Stages
 ```mermaid
 graph TD;
-    A{Audio}-->P{Pitch}<br>1. freq/frame<br>2. confidence/frame;
-    A-->D{Descriptors}<br>1. loudness/frame<br>2. MFCCs? (centroid)
-    D-->M{Melody}<br>list[tuple[pitch,start,duration, velocity]]
-    P-->M
-    
+    A{Audio}-->P{Pitch}
+    A-->D{Descriptors}
+    P-->M{Melody}
+    D-->M
+    M-->H{Harmonizer}
+    H-->T{To MIDI}
+    T-->S{Save MIDI file}
+    T-->AD{Sythisize Audio}
+    AD-->ME{Merge orig and synthed}
 ```
 
 ### Melody Extraction
