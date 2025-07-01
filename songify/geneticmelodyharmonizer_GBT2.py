@@ -331,9 +331,11 @@ class FitnessEvaluator:
         """
         score = 0
         for i in range(len(chord_sequence) - 1):
+            current_chord = chord_sequence[i]
             next_chord = chord_sequence[i + 1]
-            if next_chord in self.preferred_transitions[chord_sequence[i]]:
-                score += 1
+            if current_chord in self.preferred_transitions:
+                if next_chord in self.preferred_transitions[chord_sequence[i]]:
+                   score += 1
         return score / (len(chord_sequence) - 1)
 
     def _functional_harmony(self, chord_sequence):
@@ -447,19 +449,55 @@ def main():
         ("C5", 2)  # How I wonder what you are!
     ]
     weights = {
-        "chord_melody_congruence": 0.01,
-        "chord_variety": 0.01,
-        "harmonic_flow": 0.01,
-        "functional_harmony": 0.97
+        "chord_melody_congruence": 0.5,
+        "chord_variety": 0.3,
+        "harmonic_flow": 0.1,
+        "functional_harmony": 0.1
     }
     chord_mappings = {
+
+        # major chords
         "C": ["C", "E", "G"],
-        "Dm": ["D", "F", "A"],
-        "Em": ["E", "G", "B"],
+        "C#": ["C#", "E#", "G#"],
+        "D": ["D", "F#", "A"],
+        "D#": ["D#", "G", "A#"],
+        "E": ["E", "G#", "B"],
         "F": ["F", "A", "C"],
+        "F#": ["F#", "A#", "C#"],
         "G": ["G", "B", "D"],
+        "G#": ["G#", "C", "D#"],
+        "A": ["A", "C#", "E"],      
+        "A#": ["A#", "D", "F"],
+        "B": ["B", "D#", "F#"],
+        
+        # minor chords
+        "Cm": ["C", "Eb", "G"],
+        "C#m": ["C#", "E", "G#"],
+        "Dm": ["D", "F", "A"],
+        "D#m": ["D#", "F#", "A#"],
+        "Em": ["E", "G", "B"],
+        "Fm": ["F", "Ab", "C"],
+        "F#m": ["F#", "A", "C#"],
+        "Gm": ["G", "Bb", "D"],
+        "G#m": ["G#", "B", "D#"],
         "Am": ["A", "C", "E"],
-        "Bdim": ["B", "D", "F"]
+        "A#m": ["A#", "C#", "F"],
+        "Bm": ["B", "D", "F#"],
+        
+        # diminished chords
+        "Cdim": ["C", "Eb", "Gb"],
+        "C#dim": ["C#", "E", "G"],
+        "Ddim": ["D", "F", "Ab"],
+        "D#dim": ["D#", "F#", "A"],
+        "Edim": ["E", "G", "Bb"],
+        "Fdim": ["F", "Ab", "C"],
+        "F#dim": ["F#", "A", "C"],
+        "Gdim": ["G", "Bb", "Db"],
+        "G#dim": ["G#", "B", "D"],  
+        "Adim": ["A", "C", "Eb"],
+        "A#dim": ["A#", "C#", "E"],
+        "Bdim": ["B", "D", "F"],
+
     }
     preferred_transitions = {
         "C": ["G", "Am", "F"],
