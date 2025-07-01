@@ -498,6 +498,19 @@ def main():
         "A#dim": ["A#", "C#", "E"],
         "Bdim": ["B", "D", "F"],
 
+        # augmented chords    
+        "Caug": ["C", "E", "G#"],
+        "C#aug": ["C#", "E#", "G##"],
+        "Daug": ["D", "F#", "A#"],
+        "D#aug": ["D#", "G", "B"],
+        "Eaug": ["E", "G#", "B#"],
+        "Faug": ["F", "A", "C#"],
+        "F#aug": ["F#", "A#", "C##"],
+        "Gaug": ["G", "B", "D#"],
+        "G#aug": ["G#", "C", "E"],
+        "Aaug": ["A", "C#", "E#"],
+        "A#aug": ["A#", "D", "F##"],
+        "Baug": ["B", "D#", "F##"] 
     }
     preferred_transitions = {
         "C": ["G", "Am", "F"],
