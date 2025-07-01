@@ -1,8 +1,7 @@
 import random
 from dataclasses import dataclass
-
+from preferred_chord_transitions import preferred_transitions
 import music21
-
 
 @dataclass(frozen=True)
 class MelodyData:
@@ -511,15 +510,6 @@ def main():
         "Aaug": ["A", "C#", "E#"],
         "A#aug": ["A#", "D", "F##"],
         "Baug": ["B", "D#", "F##"] 
-    }
-    preferred_transitions = {
-        "C": ["G", "Am", "F"],
-        "Dm": ["G", "Am"],
-        "Em": ["Am", "F", "C"],
-        "F": ["C", "G"],
-        "G": ["Am", "C"],
-        "Am": ["Dm", "Em", "F", "C"],
-        "Bdim": ["F", "Am"]
     }
 
     # Instantiate objects for generating harmonization
