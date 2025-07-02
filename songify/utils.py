@@ -34,7 +34,7 @@ def melody_to_score(melody: list[tuple[int, float, float, float]]):
 
 def melody_with_harmony_to_score(
         melody: list[tuple[int, float, float, float]],
-        harmony: list[tuple[list[int], float, float]]
+        harmony: list[tuple[list[int], float, float, float]]
     ):
     """
     Convert a melody and its corresponding harmony into a symusic Score.
@@ -52,17 +52,18 @@ def melody_with_harmony_to_score(
         chord midi notes (list[int]),
         start_time (seconds),
         duration (seconds),
+        velocity (0 to 1)
     )
     """
     score = melody_to_score(melody)
 
-    for chord_notes, start_time, duration in harmony:
+    for chord_notes, start_time, duration, velocity in harmony:
         for pitch in chord_notes:
             new_note = symusic.Note(
                 time=start_time,
                 duration=duration,
                 pitch=pitch,
-                velocity=60,
+                velocity=int(velocity*127),
                 ttype='second'
             )
             score.tracks[0].notes.append(new_note)

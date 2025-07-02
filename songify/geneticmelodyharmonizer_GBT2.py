@@ -3,8 +3,10 @@ from dataclasses import dataclass
 from preferred_chord_transitions import preferred_transitions, chord_mappings
 import music21
 
+from songify import utils
 
-@dataclass(frozen=True)
+
+# @dataclass(frozen=True)
 class MelodyData:
     """
     A data class representing the data of a melody.
@@ -28,14 +30,22 @@ class MelodyData:
     """
 
     notes: list
-    duration: int = None  # Computed attribute
+    duration: int
     number_of_notes: int = None  # Computed attribute
 
-    def __post_init__(self):
-        object.__setattr__(
-            self, "duration", sum(duration for _, duration in self.notes)
-        )
-        object.__setattr__(self, "number_of_notes", len(self.notes))
+    def __init__(self, notes, durations):
+        self.notes = notes
+        self.durations = durations
+        self.total_duration = sum(self.durations)
+        
+        self.number_of_notes = len(self.notes)
+        
+        assert self.number_of_notes == len(self.durations)
+
+    # def __post_init__(self):
+    #     object.__setattr__(self, "duration",
+    #                        sum(duration for _, duration in self.notes))
+    #     object.__setattr__(self, "number_of_notes", len(self.notes))
 
 
 class GeneticMelodyHarmonizer:
@@ -95,16 +105,9 @@ class GeneticMelodyHarmonizer:
             parents = self._select_parents()
             new_population = self._create_new_population(parents)
             self._population = new_population
-            # # Print average score
-            # average_fitness = sum(
-            #     self.fitness_evaluator.evaluate(seq) for seq in self._population
-            # ) / self.population_size
-            # print(f"Average fitness in generation: {average_fitness:.2f}")
         best_chord_sequence = (
             self.fitness_evaluator.get_chord_sequence_with_highest_fitness(
-                self._population
-            )
-        )
+                self._population))
         return best_chord_sequence
 
     def _initialise_population(self):
@@ -142,9 +145,9 @@ class GeneticMelodyHarmonizer:
         fitness_values = [
             self.fitness_evaluator.evaluate(seq) for seq in self._population
         ]
-        return random.choices(
-            self._population, weights=fitness_values, k=self.population_size
-        )
+        return random.choices(self._population,
+                              weights=fitness_values,
+                              k=self.population_size)
 
     def _create_new_population(self, parents):
         """
@@ -175,9 +178,9 @@ class GeneticMelodyHarmonizer:
         """
         new_population = []
         for i in range(0, self.population_size, 2):
-            child1, child2 = self._crossover(
-                parents[i], parents[i + 1]
-            ), self._crossover(parents[i + 1], parents[i])
+            child1, child2 = self._crossover(parents[i],
+                                             parents[i + 1]), self._crossover(
+                                                 parents[i + 1], parents[i])
             child1 = self._mutate(child1)
             child2 = self._mutate(child2)
             new_population.extend([child1, child2])
@@ -225,9 +228,8 @@ class FitnessEvaluator:
         preferred_transitions (dict): Preferred chord transitions.
     """
 
-    def __init__(
-        self, melody_data, chord_mappings, weights, preferred_transitions
-    ):
+    def __init__(self, melody_data, chord_mappings, weights,
+                 preferred_transitions):
         """
         Initialize the FitnessEvaluator with melody, chords, weights, and
         preferred transitions.
@@ -265,10 +267,9 @@ class FitnessEvaluator:
         Returns:
             float: The overall fitness score of the chord sequence.
         """
-        return sum(
-            self.weights[func] * getattr(self, f"_{func}")(chord_sequence)
-            for func in self.weights
-        )
+        return sum(self.weights[func] *
+                   getattr(self, f"_{func}")(chord_sequence)
+                   for func in self.weights)
 
     def _chord_melody_congruence(self, chord_sequence):
         """
@@ -289,16 +290,24 @@ class FitnessEvaluator:
                 duration.
         """
         score = 0
-        for i, (chord, (pitch, duration)) in enumerate(zip(chord_sequence, self.melody_data.notes)):
+        
+        # print(list(enumerate(
+        #         zip(chord_sequence, self.melody_data.notes, self.melody_data.durations))))
+        
+        for i, (chord, (pitch, duration)) in enumerate(
+                zip(chord_sequence, zip(self.melody_data.notes, self.melody_data.durations))):
             start = max(0, i - 2)
             end = min(len(self.melody_data.notes), i + 3)
             window_notes = self.melody_data.notes[start:end]
             window_pitches = [note[0] for note in window_notes]
-            
+
             if any(p in self.chord_mappings[chord] for p in window_pitches):
-                score += duration
-        
-        return score / self.melody_data.duration
+                try:
+                    score += duration
+                except:
+                    print(f'chord_sequence: {chord_sequence}')
+
+        return score / self.melody_data.total_duration
 
     def _chord_variety(self, chord_sequence):
         """
@@ -340,8 +349,9 @@ class FitnessEvaluator:
             next_chord = chord_sequence[i + 1]
             if current_chord in self.preferred_transitions:
                 if next_chord in self.preferred_transitions[chord_sequence[i]]:
-                   score += 1
+                    score += 1
         return score / (len(chord_sequence) - 1)
+
 
 def create_score(melody, starts, chord_sequence, chord_mappings):
     """
@@ -362,7 +372,8 @@ def create_score(melody, starts, chord_sequence, chord_mappings):
     chord_part = music21.stream.Part()
 
     current_offset = 0
-    for (note_name, duration), start, chord_name in zip(melody, starts, chord_sequence):
+    for (note_name,
+         duration), start, chord_name in zip(melody, starts, chord_sequence):
         melody_note = music21.note.Note(note_name)
         melody_note.seconds = duration
         melody_note.offset = start
@@ -382,57 +393,105 @@ def create_score(melody, starts, chord_sequence, chord_mappings):
     return score
 
 
+def midi_note_to_note_string(note_number):
+    note_names = [
+        'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
+    ]
+    note = note_names[note_number % 12]
+    octave = (note_number // 12) - 1  # MIDI standard: C4 = 60
+    return f"{note}{octave}"
+
+
+def note_string_to_midi_note(note_string):
+    note_names = {
+        'C': 0,
+        'C#': 1,
+        'Db':1,
+        'D': 2,
+        'D#': 3,
+        'Eb':3,
+        'E': 4,
+        'F': 5,
+        'F#': 6,
+        'Gb':6,
+        'G': 7,
+        'G#': 8,
+        'Ab':8,
+        'A': 9,
+        'A#': 10,
+        'Bb':10,
+        'B': 11
+    }
+    
+    for name in sorted(note_names.keys(), key=len, reverse=True):
+        if note_string.startswith(name):
+            try:
+                octave = int(note_string[len(name):])
+            except:
+                octave = 4
+
+            return (octave + 1) * 12 + note_names[name]
+    raise ValueError(f"Invalid note string: {note_string}")
+
+
+def chord_strings_to_midi_chords(chords):
+    # Chord string to note strings list
+    chords = [chord_mappings[chord] for chord in chords]
+
+    # Note string list to MIDI integer note list
+
+    chords = [[note_string_to_midi_note(string_note) for string_note in notes]
+              for notes in chords]
+    
+    return chords
+
+
 def main():
 
-    data = [
-        (57, 0.15000000596046448, 0.44999999999999996, 1.0), 
-        (55, 0.6000000238418579, 0.15000000000000002, 1.0), 
-        (57, 0.75, 0.05, 1.0), 
-        (58, 0.800000011920929, 0.15000000000000002, 1.0), 
-        (52, 0.949999988079071, 0.05, 1.0), 
-        (50, 1.0, 0.3, 0.9999992847442627), 
-        (52, 1.2999999523162842, 0.05, 1.0), 
-        (54, 1.350000023841858, 0.15000000000000002, 1.0), 
-        (51, 2.049999952316284, 0.2, 1.0), 
-        (49, 2.25, 0.05, 1.0), 
-        (47, 2.299999952316284, 0.1, 0.9999985694885254), 
-        (52, 2.4000000953674316, 0.1, 1.0), 
-        (51, 2.5, 0.05, 1.0), 
-        (48, 2.549999952316284, 0.1, 1.0), 
-        (47, 2.6500000953674316, 0.1, 1.0), 
-        (46, 2.75, 0.05, 1.0), 
-        (48, 2.9000000953674316, 0.15000000000000002, 1.0), 
-        (47, 3.049999952316284, 0.05, 1.0),  
-        (55, 3.200000047683716, 0.1, 1.0), 
-        (49, 3.299999952316284, 0.05, 1.0), 
-        (47, 3.450000047683716, 0.3, 1.0), 
-        (48, 3.75, 0.15000000000000002, 1.0), 
-        (53, 3.9000000953674316, 0.1, 1.0), 
-        (44, 4.0, 0.15000000000000002, 0.4803946912288666), 
-        (45, 4.150000095367432, 0.1, 1.0), 
-        (46, 4.25, 0.05, 1.0), 
-        (50, 4.300000190734863, 0.05, 1.0), 
-        (52, 4.349999904632568, 0.1, 1.0), 
-        (41, 4.550000190734863, 0.2, 0.9998537302017212), 
-        (39, 4.75, 0.05, 0.9999998807907104), 
-        (51, 5.599999904632568, 0.1, 1.0), 
-        (53, 6.0, 0.1, 1.0), 
-        (52, 6.099999904632568, 0.05, 1.0), 
-        (51, 6.150000095367432, 0.05, 1.0), 
-        (50, 6.199999809265137, 0.2, 0.9975391626358032), 
-        (49, 6.400000095367432, 0.05, 0.9998569488525391), 
-        (48, 6.449999809265137, 0.1, 1.0), 
-        (47, 6.550000190734863, 0.1, 0.9991744160652161), 
-        (43, 7.0, 0.15000000000000002, 1.0), 
-        (42, 7.150000095367432, 0.1, 0.9995341300964355), 
-        (41, 7.25, 0.05, 1.0), 
-        (40, 7.300000190734863, 0.1, 1.0), 
-        (42, 7.400000095367432, 0.1, 1.0), 
-        (50, 7.599999904632568, 0.1, 0.9998584985733032)]
-    
-    input_melody = [ (note[0], note[2]) for note in data ]  # Extract pitches from the melody
-    starts = [ note[1] for note in data ]  # Extract start times from the melody
- 
+    data = [(57, 0.15000000596046448, 0.44999999999999996, 1.0),
+            (55, 0.6000000238418579, 0.15000000000000002, 1.0),
+            (57, 0.75, 0.05, 1.0),
+            (58, 0.800000011920929, 0.15000000000000002, 1.0),
+            (52, 0.949999988079071, 0.05, 1.0),
+            (50, 1.0, 0.3, 0.9999992847442627),
+            (52, 1.2999999523162842, 0.05, 1.0),
+            (54, 1.350000023841858, 0.15000000000000002, 1.0),
+            (51, 2.049999952316284, 0.2, 1.0), (49, 2.25, 0.05, 1.0),
+            (47, 2.299999952316284, 0.1, 0.9999985694885254),
+            (52, 2.4000000953674316, 0.1, 1.0), (51, 2.5, 0.05, 1.0),
+            (48, 2.549999952316284, 0.1, 1.0),
+            (47, 2.6500000953674316, 0.1, 1.0), (46, 2.75, 0.05, 1.0),
+            (48, 2.9000000953674316, 0.15000000000000002, 1.0),
+            (47, 3.049999952316284, 0.05, 1.0),
+            (55, 3.200000047683716, 0.1, 1.0),
+            (49, 3.299999952316284, 0.05, 1.0),
+            (47, 3.450000047683716, 0.3, 1.0),
+            (48, 3.75, 0.15000000000000002, 1.0),
+            (53, 3.9000000953674316, 0.1, 1.0),
+            (44, 4.0, 0.15000000000000002, 0.4803946912288666),
+            (45, 4.150000095367432, 0.1, 1.0), (46, 4.25, 0.05, 1.0),
+            (50, 4.300000190734863, 0.05, 1.0),
+            (52, 4.349999904632568, 0.1, 1.0),
+            (41, 4.550000190734863, 0.2, 0.9998537302017212),
+            (39, 4.75, 0.05, 0.9999998807907104),
+            (51, 5.599999904632568, 0.1, 1.0), (53, 6.0, 0.1, 1.0),
+            (52, 6.099999904632568, 0.05, 1.0),
+            (51, 6.150000095367432, 0.05, 1.0),
+            (50, 6.199999809265137, 0.2, 0.9975391626358032),
+            (49, 6.400000095367432, 0.05, 0.9998569488525391),
+            (48, 6.449999809265137, 0.1, 1.0),
+            (47, 6.550000190734863, 0.1, 0.9991744160652161),
+            (43, 7.0, 0.15000000000000002, 1.0),
+            (42, 7.150000095367432, 0.1, 0.9995341300964355),
+            (41, 7.25, 0.05, 1.0), (40, 7.300000190734863, 0.1, 1.0),
+            (42, 7.400000095367432, 0.1, 1.0),
+            (50, 7.599999904632568, 0.1, 0.9998584985733032)]
+
+    pitch = [midi_note_to_note_string(note[0]) for note in data]
+    starts = [note[1] for note in data]
+    durations = [note[2] for note in data]
+    velocities = [note[3] for note in data]
+
     weights = {
         "chord_melody_congruence": 0.3,
         "chord_variety": 0.2,
@@ -440,7 +499,8 @@ def main():
     }
 
     # Instantiate objects for generating harmonization
-    melody_data = MelodyData(input_melody)
+    
+    melody_data = MelodyData(pitch, durations)
     fitness_evaluator = FitnessEvaluator(
         melody_data=melody_data,
         weights=weights,
@@ -450,19 +510,25 @@ def main():
     harmonizer = GeneticMelodyHarmonizer(
         melody_data=melody_data,
         chords=list(chord_mappings.keys()),
-        population_size=100, #TODO: Change this to increase
+        population_size=100,  #TODO: Change this to increase
         mutation_rate=0.05,
         fitness_evaluator=fitness_evaluator,
     )
 
     # Generate chords with genetic algorithm
-    generated_chords = harmonizer.generate(generations=1000)
+    harmony = harmonizer.generate(generations=1000)
 
+    # print(f'harmony: {harmony}')
+
+    harmony = zip(chord_strings_to_midi_chords(harmony), starts, durations, velocities)
+
+    score = utils.melody_with_harmony_to_score(data, harmony)
+    score.dump_midi('output.mid')
+    
     # Render to music21 score and show it
-    music21_score = create_score(
-        input_melody, starts, generated_chords, chord_mappings
-    )
-    music21_score.show()
+    # music21_score = create_score(pitch, starts, generated_chords,
+    #                              chord_mappings)
+    # music21_score.show()
 
 
 if __name__ == "__main__":
