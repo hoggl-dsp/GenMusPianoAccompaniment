@@ -16,6 +16,7 @@ dependencies = [
     "symusic",
     "matplotlib",
     "music21",
+    "streamlit",
 ]
 
 [tool.setuptools]
