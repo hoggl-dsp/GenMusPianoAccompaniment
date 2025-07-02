@@ -112,6 +112,9 @@ def extract_melody(
         2. Applies median filtering to reduce noise
         3. Merges consecutive notes of the same pitch
     """
+    # peaks = estimate_word_boundaries(audio, sample_rate, frame_size_millis, strategy='librosa')
+    peaks = librosa.onset.onset_detect(y=audio.numpy(), sr=sample_rate, units='time')
+
     timesteps, pitches, pitch_confidence = estimate_pitch(audio, sample_rate, frame_size_millis, pitch_strategy)
 
     timesteps = timesteps / 1000.0 # Convert to seconds
