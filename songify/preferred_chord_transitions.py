@@ -1,5 +1,6 @@
-from music21 import scale, pitch
 import re
+
+from music21 import pitch, scale
 
 chord_mappings = {
     # major chords
@@ -15,7 +16,6 @@ chord_mappings = {
     "A": ["A", "C#", "E"],
     "A#": ["A#", "D", "F"],
     "B": ["B", "D#", "F#"],
-
     # minor chords
     "Cm": ["C", "Eb", "G"],
     "C#m": ["C#", "E", "G#"],
@@ -29,7 +29,6 @@ chord_mappings = {
     "Am": ["A", "C", "E"],
     "A#m": ["A#", "C#", "F"],
     "Bm": ["B", "D", "F#"],
-
     # diminished chords
     "Cdim": ["C", "Eb", "Gb"],
     "C#dim": ["C#", "E", "G"],
@@ -43,7 +42,6 @@ chord_mappings = {
     "Adim": ["A", "C", "Eb"],
     "A#dim": ["A#", "C#", "E"],
     "Bdim": ["B", "D", "F"],
-
     # augmented chords
     "Caug": ["C", "E", "G#"],
     "C#aug": ["C#", "E#", "G##"],
@@ -56,7 +54,7 @@ chord_mappings = {
     "G#aug": ["G#", "C", "E"],
     "Aaug": ["A", "C#", "E#"],
     "A#aug": ["A#", "D", "F##"],
-    "Baug": ["B", "D#", "F##"]
+    "Baug": ["B", "D#", "F##"],
 }
 
 
@@ -73,7 +71,7 @@ def extract_root(chord_name):
     """
     Extracts the root note from a chord name that may end with m, dim, or aug.
     """
-    match = re.match(r'^([A-G][#b]?)(m|dim|aug)?$', chord_name)
+    match = re.match(r"^([A-G][#b]?)(m|dim|aug)?$", chord_name)
     if not match:
         raise ValueError(f"Invalid chord name: {chord_name}")
     return match.group(1)
@@ -95,9 +93,13 @@ def build_preferred_transitions(chord_mappings):
 
         if is_diminished:
             if root in ["B", "D#", "F#"]:
-                preferred_transitions[chord_name] = [c for c in ["C", "Em", "G"] if c in chord_mappings]
+                preferred_transitions[chord_name] = [
+                    c for c in ["C", "Em", "G"] if c in chord_mappings
+                ]
             else:
-                preferred_transitions[chord_name] = [c for c in ["Am", "C", "F"] if c in chord_mappings]
+                preferred_transitions[chord_name] = [
+                    c for c in ["Am", "C", "F"] if c in chord_mappings
+                ]
             continue
 
         scale_type = scale.MinorScale if is_minor else scale.MajorScale
@@ -112,19 +114,29 @@ def build_preferred_transitions(chord_mappings):
         # Determine diatonic chords based on mode
         if is_minor:
             degree_chords = [
-                scale_degrees[0] + "m", scale_degrees[1] + "dim", scale_degrees[2],
-                scale_degrees[3] + "m", scale_degrees[4] + "m",
-                scale_degrees[5], scale_degrees[6]
+                scale_degrees[0] + "m",
+                scale_degrees[1] + "dim",
+                scale_degrees[2],
+                scale_degrees[3] + "m",
+                scale_degrees[4] + "m",
+                scale_degrees[5],
+                scale_degrees[6],
             ]
         else:
             degree_chords = [
-                scale_degrees[0], scale_degrees[1] + "m", scale_degrees[2] + "m",
-                scale_degrees[3], scale_degrees[4],
-                scale_degrees[5] + "m", scale_degrees[6] + "dim"
+                scale_degrees[0],
+                scale_degrees[1] + "m",
+                scale_degrees[2] + "m",
+                scale_degrees[3],
+                scale_degrees[4],
+                scale_degrees[5] + "m",
+                scale_degrees[6] + "dim",
             ]
 
         # Filter and score transitions
-        candidates = [ch for ch in degree_chords if ch in chord_mappings and ch != chord_name]
+        candidates = [
+            ch for ch in degree_chords if ch in chord_mappings and ch != chord_name
+        ]
         ranked = sorted(
             candidates,
             key=lambda c: get_chord_similarity(chord_name, c, chord_mappings),
@@ -132,10 +144,15 @@ def build_preferred_transitions(chord_mappings):
         )
 
         # Only include chords that share at least 2 notes (strong harmonic connection)
-        filtered = [c for c in ranked if get_chord_similarity(chord_name, c, chord_mappings) >= 2]
+        filtered = [
+            c
+            for c in ranked
+            if get_chord_similarity(chord_name, c, chord_mappings) >= 2
+        ]
         preferred_transitions[chord_name] = filtered[:3]  # take top 3 best matches
 
     return preferred_transitions
+
 
 # Generate and print
 preferred_transitions = build_preferred_transitions(chord_mappings)
@@ -145,60 +162,55 @@ preferred_transitions = build_preferred_transitions(chord_mappings)
 
 IMPOSSIBLE_COMBINATIONS = {
     # Major chords
-    "C":  ["F#", "A#", "D#"],
+    "C": ["F#", "A#", "D#"],
     "C#": ["G", "B", "E"],
-    "D":  ["G#", "C", "F"],
+    "D": ["G#", "C", "F"],
     "D#": ["A", "C#", "F#"],
-    "E":  ["A#", "D", "G"],
-    "F":  ["B", "D#", "G#"],
+    "E": ["A#", "D", "G"],
+    "F": ["B", "D#", "G#"],
     "F#": ["C", "E", "A"],
-    "G":  ["C#", "F", "A#"],
+    "G": ["C#", "F", "A#"],
     "G#": ["D", "F#", "B"],
-    "A":  ["D#", "G", "C"],
+    "A": ["D#", "G", "C"],
     "A#": ["E", "G#", "C#"],
-    "B":  ["F", "A", "D"],
-
+    "B": ["F", "A", "D"],
     # Minor chords
-    "Cm":  ["D", "G#", "B"],
+    "Cm": ["D", "G#", "B"],
     "C#m": ["D#", "A", "C"],
-    "Dm":  ["E", "A#", "C#"],
+    "Dm": ["E", "A#", "C#"],
     "D#m": ["F", "B", "D"],
-    "Em":  ["F#", "C", "D#"],
-    "Fm":  ["G", "C#", "E"],
+    "Em": ["F#", "C", "D#"],
+    "Fm": ["G", "C#", "E"],
     "F#m": ["G#", "D", "F"],
-    "Gm":  ["A", "D#", "F#"],
+    "Gm": ["A", "D#", "F#"],
     "G#m": ["B", "E", "G"],
-    "Am":  ["C", "F", "G#"],
+    "Am": ["C", "F", "G#"],
     "A#m": ["C#", "F#", "A"],
-    "Bm":  ["D", "G", "A#"],
-
+    "Bm": ["D", "G", "A#"],
     # Diminished chords
-    "Cdim":  ["D", "F", "A"],
+    "Cdim": ["D", "F", "A"],
     "C#dim": ["D#", "F#", "A#"],
-    "Ddim":  ["E", "G", "B"],
+    "Ddim": ["E", "G", "B"],
     "D#dim": ["F", "G#", "C"],
-    "Edim":  ["F#", "A", "C#"],
-    "Fdim":  ["G", "A#", "D"],
+    "Edim": ["F#", "A", "C#"],
+    "Fdim": ["G", "A#", "D"],
     "F#dim": ["G#", "B", "D#"],
-    "Gdim":  ["A", "C", "E"],
+    "Gdim": ["A", "C", "E"],
     "G#dim": ["A#", "C#", "F"],
-    "Adim":  ["B", "D", "F#"],
+    "Adim": ["B", "D", "F#"],
     "A#dim": ["C", "D#", "G"],
-    "Bdim":  ["C#", "E", "G#"],
-    
+    "Bdim": ["C#", "E", "G#"],
     # Augmented chords
-    "Caug":  ["D", "F", "G"],
+    "Caug": ["D", "F", "G"],
     "C#aug": ["D#", "F#", "G#"],
-    "Daug":  ["E", "G", "A"],
+    "Daug": ["E", "G", "A"],
     "D#aug": ["F", "G#", "A#"],
-    "Eaug":  ["F#", "A", "B"],
-    "Faug":  ["G", "A#", "C"],
+    "Eaug": ["F#", "A", "B"],
+    "Faug": ["G", "A#", "C"],
     "F#aug": ["G#", "B", "C#"],
-    "Gaug":  ["A", "C", "D"],
+    "Gaug": ["A", "C", "D"],
     "G#aug": ["A#", "C#", "D#"],
-    "Aaug":  ["B", "D", "E"],
+    "Aaug": ["B", "D", "E"],
     "A#aug": ["C", "D#", "F"],
-    "Baug":  ["C#", "E", "F#"]
+    "Baug": ["C#", "E", "F#"],
 }
-
-    

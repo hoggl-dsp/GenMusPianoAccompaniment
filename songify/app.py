@@ -2,14 +2,15 @@ import struct
 import wave
 from io import BytesIO
 
+import librosa
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
+import symusic
 
-import librosa
-
-from songify.main import HarmonyGenerationParameters, MelodyExtractionParameters, SongifyApp
 from songify import utils
+from songify.main import (HarmonyGenerationParameters,
+                          MelodyExtractionParameters, SongifyApp)
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
@@ -89,7 +90,9 @@ if "uploaded_file" not in st.session_state:
 
 # Header
 st.markdown('<h1 class="main-title">Songify</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Any sound can be a song XP</p>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="sub-title">Any sound can be a song XP</p>', unsafe_allow_html=True
+)
 
 # Audio Upload Section
 st.markdown('<div class="upload-section">', unsafe_allow_html=True)
@@ -114,7 +117,9 @@ if uploaded_file is not None:
 
         # Create a simple waveform visualization
         fig, ax = plt.subplots(figsize=(12, 3))
-        librosa.display.waveshow(songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5)
+        librosa.display.waveshow(
+            songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
+        )
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Amplitude")
         ax.set_title("Audio Waveform")
@@ -210,7 +215,12 @@ with col2:
         "flow: float", min_value=0.0, max_value=1.0, value=0.7, step=0.01, format="%.3f"
     )
     dissonance = st.number_input(
-        "dissonance: float", min_value=0.0, max_value=1.0, value=0.7, step=0.01, format="%.3f"
+        "dissonance: float",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.7,
+        step=0.01,
+        format="%.3f",
     )
     duration_threshold = st.slider(
         "Duration Threshold (seconds)",
@@ -233,8 +243,10 @@ if st.button("🎵 Generate!", type="primary"):
     if st.session_state.uploaded_file is not None:
         with st.spinner("Processing audio... This may take a moment."):
 
-            melody_score, harmony_score, melody_audio, harmony_audio = songify_app.generate(
-                melody_params=melody_params, harmony_params=harmony_params
+            melody_score, harmony_score, melody_audio, harmony_audio = (
+                songify_app.generate(
+                    melody_params=melody_params, harmony_params=harmony_params
+                )
             )
 
             # Generate dummy audio data for demonstration
@@ -243,9 +255,11 @@ if st.button("🎵 Generate!", type="primary"):
 
             assert original_audio is not None, "Audio data is not loaded."
             assert sample_rate is not None, "Sample rate is not set."
-            
+
             # Combine and normalize
-            generated_audio = utils.mix_audio(melody_audio, harmony_audio, blend=0.5, stereo=True)
+            generated_audio = utils.mix_audio(
+                melody_audio, harmony_audio, blend=0.5, stereo=True
+            )
 
             output_audio = utils.mix_audio(
                 original_audio,
@@ -254,6 +268,9 @@ if st.button("🎵 Generate!", type="primary"):
                 stereo=True,
             )
             st.success(f"Generated audio shape: {output_audio.shape}")
+
+            st.session_state.melody_score = melody_score
+            st.session_state.harmony_score = harmony_score
 
             st.session_state.generated_audio = output_audio.numpy()
 
@@ -303,7 +320,12 @@ col1, col2 = st.columns(2)
 with col1:
     if st.session_state.generated_audio is not None:
         # Create MIDI file (simplified - just a placeholder)
-        midi_data = b"MThd\x00\x00\x00\x06\x00\x00\x00\x01\x00\x60MTrk\x00\x00\x00\x0b\x00\xff/\x00"
+        score = utils.merge_scores(
+            [st.session_state.melody_score, st.session_state.harmony_score]
+        )
+
+        midi_data = score.dumps_midi()
+
         st.download_button(
             label="📥 Download Midi",
             data=midi_data,
