@@ -33,11 +33,7 @@ class HarmonyGenerationParameters:
 class SongifyApp:
     def __init__(
         self,
-        melody_params: MelodyExtractionParameters = MelodyExtractionParameters(),
-        harmony_params: HarmonyGenerationParameters = HarmonyGenerationParameters(),
     ):
-        self.melody_params = melody_params
-        self.harmony_params = harmony_params
         self.audio: Union[torch.Tensor, None] = None
         self.sample_rate: Union[int, None] = None
 
