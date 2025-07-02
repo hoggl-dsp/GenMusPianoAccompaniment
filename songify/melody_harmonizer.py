@@ -512,18 +512,17 @@ def filter_chords_by_duration(harmony, duration_threshold=0.1):
             filtered_harmony.append((chord_notes, start, duration, velocity))
     return filtered_harmony
 
-def harmonize(data):
-
+def harmonize(data, congruence, variety, flow, dissonance, duration_threshold):
     pitch = [midi_note_to_note_string(note[0]) for note in data]
     starts = [note[1] for note in data]
     durations = [note[2] for note in data]
     velocities = [note[3] for note in data]
 
     weights = {
-        "chord_melody_congruence": 0.3,
-        "chord_variety": 0.2,
-        "harmonic_flow": 0.3,
-        "penalize_dissonance": 0.2,  
+        "chord_melody_congruence": congruence,
+        "chord_variety": variety,
+        "harmonic_flow": flow,
+        "penalize_dissonance": dissonance,  
     }
 
     # Instantiate objects for generating harmonization
@@ -550,7 +549,7 @@ def harmonize(data):
     melody_midi_notes = [note_string_to_midi_note(note) for note in pitch]
     inverted_harmony = invert_chords_below_melody(harmony, melody_midi_notes)
     harmony = zip(inverted_harmony, starts, durations, velocities)
-    harmony = filter_chords_by_duration(harmony, duration_threshold=0.1) 
+    harmony = filter_chords_by_duration(harmony, duration_threshold) 
 
     return harmony
 
