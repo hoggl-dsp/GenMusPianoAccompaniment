@@ -66,7 +66,7 @@ def harmony_to_score(chords: list[tuple[list[int], float, float, float]]):
 
 def merge_scores(
     scores: list[symusic.types.Score],
-):
+) -> symusic.types.Score:
     """
     Merge multiple symusic Scores into a single Score, by combining all notes into a single track.
     """
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         ([60, 64, 67, 71], 3.5, 1.0, 1.0),
     ]
 
-    harmony_score = chords_to_score(harmony)
+    harmony_score = harmony_to_score(harmony)
     print("Harmony Score:")
     print(harmony_score)
 
