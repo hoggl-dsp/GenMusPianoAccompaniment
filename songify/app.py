@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
-from songify import HarmonyGenerationParameters, MelodyExtractionParameters, SongifyApp
+from main import HarmonyGenerationParameters, MelodyExtractionParameters, SongifyApp
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
