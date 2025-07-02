@@ -352,6 +352,30 @@ class FitnessEvaluator:
                     score += 1
         return score / (len(chord_sequence) - 1)
 
+    def _penalize_dissonance(self, chord_sequence):
+        """
+        Penalizes chord-note combinations that are considered dissonant.
+        Uses the IMPOSSIBLE_COMBINATIONS dictionary to subtract points for
+        any melody note in the local window that clashes with the chord.
+
+        Returns:
+            float: Penalty score (lower is worse).
+        """
+        penalty = 0
+        for i, chord in enumerate(chord_sequence):
+            if chord not in IMPOSSIBLE_COMBINATIONS:
+                continue
+            dissonant_pitches = IMPOSSIBLE_COMBINATIONS[chord]
+            start = max(0, i - 2)
+            end = min(len(self.melody_data.notes), i + 3)
+            window_notes = self.melody_data.notes[start:end]
+            window_pitches = [note[0] for note in window_notes]
+            clashes = [p for p in window_pitches if p in dissonant_pitches]
+            penalty += len(clashes)
+        
+        # Normalize: subtract from 1 so fewer penalties is better (like other fitness metrics)
+        max_possible = len(chord_sequence) * 5  # worst case: 5 dissonant notes per chord
+        return 1 - (penalty / max_possible if max_possible else 0)
 
 def create_score(melody, starts, chord_sequence, chord_mappings):
     """
@@ -495,7 +519,8 @@ def main():
     weights = {
         "chord_melody_congruence": 0.3,
         "chord_variety": 0.2,
-        "harmonic_flow": 0.5,
+        "harmonic_flow": 0.3,
+        "penalize_dissonance": 0.2,  
     }
 
     # Instantiate objects for generating harmonization
