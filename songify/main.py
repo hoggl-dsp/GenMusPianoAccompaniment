@@ -26,7 +26,7 @@ class HarmonyGenerationParameters:
     chord_melody_congruence: float = 0.5
     chord_variety: float = 0.5
     harmonic_flow: float = 0.5
-    functional_harmony: float = 0.5
+    dissonance: float = 0.5
     duration_threshold: float = 0.5  # seconds
 
 
@@ -92,7 +92,7 @@ class SongifyApp:
             congruence=harmony_params.chord_melody_congruence,
             variety=harmony_params.chord_variety,
             flow=harmony_params.harmonic_flow,
-            dissonance=harmony_params.functional_harmony,
+            dissonance=harmony_params.dissonance,
             duration_threshold=harmony_params.duration_threshold,
         )
 
