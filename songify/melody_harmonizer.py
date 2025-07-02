@@ -493,6 +493,24 @@ def invert_chords_below_melody(midi_chords, melody_midi_notes):
 
     return inverted_chords
 
+def filter_chords_by_duration(harmony, duration_threshold=0.1):
+    """
+    Remove chords whose corresponding melody notes are too short.
+
+    Args:
+        harmony (iterable): List of (chord_notes, start, duration, velocity) tuples.
+        duration_threshold (float): Chords are removed if duration is below this.
+
+    Returns:
+        list: Filtered harmony list.
+    """
+    filtered_harmony = []
+    for chord_notes, start, duration, velocity in harmony:
+        if duration < duration_threshold:
+            filtered_harmony.append(([], start, duration, velocity))
+        else:
+            filtered_harmony.append((chord_notes, start, duration, velocity))
+    return filtered_harmony
 
 def harmonize(data):
 
@@ -530,10 +548,9 @@ def harmonize(data):
 
     harmony = chord_strings_to_midi_chords(harmony)
     melody_midi_notes = [note_string_to_midi_note(note) for note in pitch]
-    
     inverted_harmony = invert_chords_below_melody(harmony, melody_midi_notes)
-
     harmony = zip(inverted_harmony, starts, durations, velocities)
+    harmony = filter_chords_by_duration(harmony, duration_threshold=0.1) 
 
     return harmony
 
