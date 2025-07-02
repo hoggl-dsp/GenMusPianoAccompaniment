@@ -120,7 +120,7 @@ def extract_melody(
     pitches[pitch_confidence < 0.5] = 0
 
     # Median Filtering
-    median_filter_size = 3
+    median_filter_size = 5
     median_filter_radius = median_filter_size // 2
     for i in range(median_filter_radius, len(pitches) - median_filter_radius):
         pitches[i] = torch.median(pitches[i - median_filter_radius: i + median_filter_radius + 1])
@@ -149,6 +149,40 @@ def extract_melody(
     # velocities = pitch_confidence.tolist()
 
     frame_size_secs = frame_size_millis / 1000.0
+    rms_threshold_db = -40.0  # RMS threshold in dB
+    rms_threshold = librosa.db_to_amplitude(rms_threshold_db)
+
+    melody = []
+    for i, peak in enumerate(peaks):
+        next_peak = peaks[i + 1] if i < len(peaks) - 1 else None
+        duration = 0.0
+        frame_idx = int(peak / frame_size_secs)
+        start_frame_index = frame_idx
+
+        while True:
+            if frame_idx >= len(pitches):
+                break
+            if pitches[frame_idx] <= 0:
+                break
+            if next_peak is not None and peak + duration > next_peak:
+                break
+            
+            if audio[int((peak + duration) * sample_rate): int((peak + duration + frame_size_secs) * sample_rate)].square().mean().sqrt() < rms_threshold:
+                break
+
+            duration += frame_size_secs
+            frame_idx += 1
+        
+        if duration <= 0.0:
+            continue
+
+        pitch = pitches[start_frame_index:frame_idx].mode()[0]
+        rms = audio[int(peak * sample_rate): int((peak + duration) * sample_rate)].square().mean().sqrt()
+        rms_db = librosa.amplitude_to_db(rms.item(), ref=1.0)
+        vel = 0.2 + 0.8 * (1.0 - rms_db / rms_threshold_db)
+        melody.append((pitch.item(), peak.item(), duration, vel))
+    
+    return melody
 
     melody = []
     for i, (timestep, pitch, confidence) in enumerate(zip(timesteps, pitches, pitch_confidence)):
