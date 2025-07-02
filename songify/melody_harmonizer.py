@@ -469,6 +469,30 @@ def chord_strings_to_midi_chords(chords):
     
     return chords
 
+def invert_chords_below_melody(midi_chords, melody_midi_notes):
+    """
+    Inverts chord notes so they fall below the corresponding melody note in MIDI pitch.
+    
+    Args:
+        midi_chords (list of list of ints): Chord notes in MIDI numbers.
+        melody_midi_notes (list of ints): Melody notes in MIDI numbers.
+    
+    Returns:
+        list of list of ints: Inverted chord MIDI note lists.
+    """
+    inverted_chords = []
+
+    for chord, melody_note in zip(midi_chords, melody_midi_notes):
+        inverted_chord = []
+        for note in chord:
+            # If a chord note is higher than the melody note, drop it by an octave
+            while note >= melody_note:
+                note -= 12
+            inverted_chord.append(note)
+        inverted_chords.append(inverted_chord)
+
+    return inverted_chords
+
 
 def harmonize(data):
 
@@ -504,7 +528,12 @@ def harmonize(data):
     # Generate chords with genetic algorithm
     harmony = harmonizer.generate(generations=1000)
 
-    harmony = zip(chord_strings_to_midi_chords(harmony), starts, durations, velocities)
+    harmony = chord_strings_to_midi_chords(harmony)
+    melody_midi_notes = [note_string_to_midi_note(note) for note in pitch]
+    
+    inverted_harmony = invert_chords_below_melody(harmony, melody_midi_notes)
+
+    harmony = zip(inverted_harmony, starts, durations, velocities)
 
     return harmony
 
