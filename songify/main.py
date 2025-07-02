@@ -8,14 +8,15 @@ from songify import melody, utils
 from songify import melody_harmonizer as mh
 
 from dataclasses import dataclass
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Union
 
 
 @dataclass
 class MelodyExtractionParameters:
     onset_detection: str = "option1"  # Options: "option1", "option2", "option3"
-    frame_size: float = 512
-    median_filter: float = 65.0
+    pitch_algorithm: str = "pesto"  # Options: "pesto", "librosa"
+    frame_size: int = 512
+    median_filter: int = 5
     min_note_duration: float = 0.1
     max_note_duration: float = 2.0
 
@@ -36,14 +37,13 @@ class SongifyApp:
     ):
         self.melody_params = melody_params
         self.harmony_params = harmony_params
-        self.audio = None
-        self.sample_rate = None
+        self.audio: Union[torch.Tensor, None] = None
+        self.sample_rate: Union[int, None] = None
 
     def load_audio(self, streamlit_file):
         # file = os.path.join('data', 'Capn Holt 1.mp3')
         streamlit_file.seek(0)  
         self.audio, self.sample_rate = torchaudio.load(streamlit_file)
-        # print(f"Loading audio from {audio_path}")
 
     # Extract melody from audio file, and return annotated melody (plot)
     def extract_melody(self) -> List[Tuple[Any, Any, Any]]:
@@ -58,6 +58,31 @@ class SongifyApp:
         print("Generating music with parameters:")
         print("Melody Parameters:", melody_params)
         print("Harmony Parameters:", harmony_params)
+
+
+        assert self.audio is not None, "Audio must be loaded before generating music"
+        assert self.sample_rate is not None, "Sample rate must be set before generating music"
+
+        audio = self.audio.clone()
+        if audio.dim() == 2:
+            audio = audio.mean(dim=0)
+        assert audio.dim() == 1, "Audio should be mono"
+
+        # Noise Reduction?
+
+
+        # Extract melody from audio
+        extracted_melody = melody.extract_melody(
+            audio=audio,
+            sample_rate=self.sample_rate,
+            onset_strategy=melody_params.onset_detection.lower(),
+            pitch_strategy=melody_params.pitch_algorithm.lower(),
+            frame_size_millis=melody_params.frame_size,
+            median_filter_size=melody_params.median_filter,
+            min_note_duration=melody_params.min_note_duration,
+            max_note_duration=melody_params.max_note_duration,
+        )
+
 
 
         pass

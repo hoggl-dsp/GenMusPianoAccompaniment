@@ -140,22 +140,28 @@ with col1:
     onset_algorithm = st.selectbox(
         "Onset algorithm",
         [
-            "Complex Domain",
-            "High Frequency Content",
-            "Spectral Difference",
-            "Phase Deviation",
+            "Librosa",
+        ],
+        index=0,
+    )
+
+    pitch_algorithm = st.selectbox(
+        "Pitch algorithm",
+        [
+            "Pesto",
+            "Librosa",
         ],
         index=0,
     )
 
     # Frame Size slider
     frame_size = st.slider(
-        "Frame Size", min_value=0.0, max_value=1.0, value=0.5, step=0.01
+        "Frame Size (millis)", min_value=10, max_value=100, value=20, step=1
     )
 
     # Median Filter slider
     median_filter = st.slider(
-        "Median Filter", min_value=0.0, max_value=1.0, value=0.3, step=0.01
+        "Median Filter", min_value=1, max_value=11, value=3, step=2
     )
 
     # Note Duration range slider
@@ -168,6 +174,7 @@ with col1:
     dry_wet = st.slider("Dry/Wet", min_value=0.0, max_value=1.0, value=0.6, step=0.01)
 
     melody_params.onset_detection = onset_algorithm
+    melody_params.pitch_algorithm = pitch_algorithm
     melody_params.frame_size = frame_size
     melody_params.median_filter = median_filter
     melody_params.min_note_duration = note_duration[0]

@@ -84,8 +84,12 @@ def vad(
 def extract_melody(
     audio: torch.Tensor,
     sample_rate: int,
+    onset_strategy: str = 'librosa',
     pitch_strategy: str = 'pesto',
     frame_size_millis: int = 10,
+    median_filter_size: int = 5,
+    min_note_duration: float = 0.1,
+    max_note_duration: float = 2.0,
 ):
     """
     Extract the melody from an audio file.
@@ -113,17 +117,19 @@ def extract_melody(
         3. Merges consecutive notes of the same pitch
     """
     # peaks = estimate_word_boundaries(audio, sample_rate, frame_size_millis, strategy='librosa')
-    peaks = librosa.onset.onset_detect(y=audio.numpy(), sr=sample_rate, units='time')
-
+    if onset_strategy == 'librosa':
+        peaks = librosa.onset.onset_detect(y=audio.numpy(), sr=sample_rate, units='time')
+    else:
+        raise NotImplementedError(f"Onset detection strategy '{onset_strategy}' is not implemented.")
+    
+    
     timesteps, pitches, pitch_confidence = estimate_pitch(audio, sample_rate, frame_size_millis, pitch_strategy)
-
     timesteps = timesteps / 1000.0 # Convert to seconds
 
     # Zero out pitches with low confidence
     pitches[pitch_confidence < 0.5] = 0
 
     # Median Filtering
-    median_filter_size = 5
     median_filter_radius = median_filter_size // 2
     for i in range(median_filter_radius, len(pitches) - median_filter_radius):
         pitches[i] = torch.median(pitches[i - median_filter_radius: i + median_filter_radius + 1])
@@ -133,18 +139,12 @@ def extract_melody(
     # voice_activity = vad(audio, sample_rate, frame_size_millis)
     # # print(voice_activity.shape)
 
-    # fig, axs = plt.subplots(1, 1, figsize=(12, 6))
+    # axs.plot(timesteps.numpy(), pitch_confidence.numpy(), label='Pitch Confidence', color='orange')
+    # axs.plot(timesteps.numpy(), pitches.numpy() / 127.0, label='Pitch (MIDI)', color='blue')
 
-    # librosa.display.waveshow(audio.numpy(), sr=sample_rate, ax=axs, alpha=0.5)
-    # axs.set_title('Audio with Pitch and Voice Activity')
-    # axs.set_xlabel('Time (s)')
+    # axs.plot(timesteps.numpy(), voice_activity.numpy(), label='Voice Activity', color='green')
 
-    # axs.plot(timesteps.numpy() / 1000.0, pitch_confidence.numpy(), label='Pitch Confidence', color='orange')
-    # # axs.plot(timesteps.numpy(), voice_activity.numpy(), label='Voice Activity', color='green')
-
-    # axs.plot(timesteps.numpy() / 1000.0, pitches.numpy() / 127.0, label='Pitch (MIDI)', color='blue')
-
-    # # plt.show()
+    # axs.vlines(peaks, ymin=-1.0, ymax=1.0, label='Librosa Peaks', colors='red')
 
     # start_times = (timesteps / 1000.0).tolist()
     # durations = (torch.ones_like(timesteps) * 0.99 * (frame_size_millis / 1000.0)).tolist()
