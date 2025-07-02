@@ -88,7 +88,7 @@ if "uploaded_file" not in st.session_state:
     st.session_state.uploaded_file = None
 
 # Header
-st.markdown('<h1 class="main-title">Title APP</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Songify</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">nice catch phrase</p>', unsafe_allow_html=True)
 
 # Audio Upload Section
