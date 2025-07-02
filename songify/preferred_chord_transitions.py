@@ -137,9 +137,68 @@ def build_preferred_transitions(chord_mappings):
 
     return preferred_transitions
 
-
 # Generate and print
 preferred_transitions = build_preferred_transitions(chord_mappings)
 
 # for chord, transitions in preferred_transitions.items():
 #     print(f"{chord}: {transitions}")
+
+IMPOSSIBLE_COMBINATIONS = {
+    # Major chords
+    "C":  ["F#", "A#", "D#"],
+    "C#": ["G", "B", "E"],
+    "D":  ["G#", "C", "F"],
+    "D#": ["A", "C#", "F#"],
+    "E":  ["A#", "D", "G"],
+    "F":  ["B", "D#", "G#"],
+    "F#": ["C", "E", "A"],
+    "G":  ["C#", "F", "A#"],
+    "G#": ["D", "F#", "B"],
+    "A":  ["D#", "G", "C"],
+    "A#": ["E", "G#", "C#"],
+    "B":  ["F", "A", "D"],
+
+    # Minor chords
+    "Cm":  ["D", "G#", "B"],
+    "C#m": ["D#", "A", "C"],
+    "Dm":  ["E", "A#", "C#"],
+    "D#m": ["F", "B", "D"],
+    "Em":  ["F#", "C", "D#"],
+    "Fm":  ["G", "C#", "E"],
+    "F#m": ["G#", "D", "F"],
+    "Gm":  ["A", "D#", "F#"],
+    "G#m": ["B", "E", "G"],
+    "Am":  ["C", "F", "G#"],
+    "A#m": ["C#", "F#", "A"],
+    "Bm":  ["D", "G", "A#"],
+
+    # Diminished chords
+    "Cdim":  ["D", "F", "A"],
+    "C#dim": ["D#", "F#", "A#"],
+    "Ddim":  ["E", "G", "B"],
+    "D#dim": ["F", "G#", "C"],
+    "Edim":  ["F#", "A", "C#"],
+    "Fdim":  ["G", "A#", "D"],
+    "F#dim": ["G#", "B", "D#"],
+    "Gdim":  ["A", "C", "E"],
+    "G#dim": ["A#", "C#", "F"],
+    "Adim":  ["B", "D", "F#"],
+    "A#dim": ["C", "D#", "G"],
+    "Bdim":  ["C#", "E", "G#"],
+    
+    # Augmented chords
+    "Caug":  ["D", "F", "G"],
+    "C#aug": ["D#", "F#", "G#"],
+    "Daug":  ["E", "G", "A"],
+    "D#aug": ["F", "G#", "A#"],
+    "Eaug":  ["F#", "A", "B"],
+    "Faug":  ["G", "A#", "C"],
+    "F#aug": ["G#", "B", "C#"],
+    "Gaug":  ["A", "C", "D"],
+    "G#aug": ["A#", "C#", "D#"],
+    "Aaug":  ["B", "D", "E"],
+    "A#aug": ["C", "D#", "F"],
+    "Baug":  ["C#", "E", "F#"]
+}
+
+    
