@@ -8,7 +8,8 @@ import streamlit as st
 
 import librosa
 
-from main import HarmonyGenerationParameters, MelodyExtractionParameters, SongifyApp
+from songify.main import HarmonyGenerationParameters, MelodyExtractionParameters, SongifyApp
+from songify import utils
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
@@ -62,13 +63,13 @@ st.markdown(
     justify-content: center;
     margin: 2rem 0;
 }
-.player-section {
-    border: 2px solid #ccc;
-    border-radius: 10px;
-    padding: 2rem;
-    text-align: center;
-    margin-bottom: 1rem;
-}
+# .player-section {
+#     border: 2px solid #ccc;
+#     border-radius: 10px;
+#     padding: 2rem;
+#     text-align: center;
+#     margin-bottom: 1rem;
+# }
 .download-section {
     display: flex;
     justify-content: center;
@@ -209,10 +210,19 @@ with col2:
         "flow: float", min_value=0.0, max_value=1.0, value=0.7, step=0.01, format="%.3f"
     )
 
+    duration_threshold = st.slider(
+        "Duration Threshold (seconds)",
+        min_value=0.1,
+        max_value=2.0,
+        value=0.5,
+        step=0.01,
+    )
+
     harmony_params.chord_melody_congruence = congruence
     harmony_params.chord_variety = variety
     harmony_params.harmonic_flow = flow
     harmony_params.functional_harmony = 0.5  # Static value for simplicity
+    harmony_params.duration_threshold = duration_threshold
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Generate Button
@@ -221,34 +231,29 @@ if st.button("🎵 Generate!", type="primary"):
     if st.session_state.uploaded_file is not None:
         with st.spinner("Processing audio... This may take a moment."):
 
-            data = songify_app.generate(
+            melody_score, harmony_score, melody_audio, harmony_audio = songify_app.generate(
                 melody_params=melody_params, harmony_params=harmony_params
             )
-            # Simulate processing time
-            import time
-
-            time.sleep(2)
 
             # Generate dummy audio data for demonstration
-            sample_rate = 44100
-            duration = 3.0  # 3 seconds
-            t = np.linspace(0, duration, int(sample_rate * duration))
+            original_audio = songify_app.audio
+            sample_rate = songify_app.sample_rate
 
-            # Create a simple melody based on parameters
-            frequency = 440 * (1 + congruence)  # Base frequency modified by congruence
-            melody = np.sin(2 * np.pi * frequency * t) * np.exp(-t / duration * variety)
-
-            # Add some harmonics based on flow parameter
-            harmony = np.sin(2 * np.pi * frequency * 1.5 * t) * flow * 0.3
-
+            assert original_audio is not None, "Audio data is not loaded."
+            assert sample_rate is not None, "Sample rate is not set."
+            
             # Combine and normalize
-            generated_audio = melody + harmony
-            generated_audio = generated_audio * dry_wet + np.random.normal(
-                0, 0.1, len(generated_audio)
-            ) * (1 - dry_wet)
-            generated_audio = generated_audio / np.max(np.abs(generated_audio)) * 0.8
+            generated_audio = utils.mix_audio(melody_audio, harmony_audio, blend=0.5, stereo=True)
 
-            st.session_state.generated_audio = generated_audio
+            output_audio = utils.mix_audio(
+                original_audio,
+                generated_audio,
+                blend=dry_wet,
+                stereo=True,
+            )
+            st.success(f"Generated audio shape: {output_audio.shape}")
+
+            st.session_state.generated_audio = output_audio.numpy()
 
         st.success("Audio generated successfully!")
         st.balloons()
@@ -262,34 +267,27 @@ st.markdown('<div class="player-section">', unsafe_allow_html=True)
 st.markdown("### ▶️ Generated Audio Waveform Player")
 
 if st.session_state.generated_audio is not None:
-    # Display waveform
-    fig, ax = plt.subplots(figsize=(12, 4))
-    t = np.linspace(0, 3, len(st.session_state.generated_audio))
-    ax.plot(t, st.session_state.generated_audio, "r-", linewidth=1)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Amplitude")
-    ax.set_title("Generated Audio Waveform")
-    ax.grid(True, alpha=0.3)
-    st.pyplot(fig)
-    plt.close()
+    with st.spinner("Preparing audio visualisation playback. Let it cook..."):
+        # Display waveform
+        fig, ax = plt.subplots(figsize=(12, 4))
+        librosa.display.waveshow(
+            st.session_state.generated_audio,
+            sr=songify_app.sample_rate,
+            ax=ax,
+            alpha=0.5,
+        )
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Amplitude")
+        ax.set_title("Generated Audio Waveform")
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
 
-    # Convert to audio format for playback
-    audio_data = st.session_state.generated_audio
-    sample_rate = 44100
+        # Convert to audio format for playback
+        audio_data = st.session_state.generated_audio
+        sample_rate = songify_app.sample_rate
 
-    # Convert to 16-bit PCM
-    audio_int16 = (audio_data * 32767).astype(np.int16)
-
-    # Create WAV file in memory
-    wav_buffer = BytesIO()
-    with wave.open(wav_buffer, "wb") as wav_file:
-        wav_file.setnchannels(1)  # Mono
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(audio_int16.tobytes())
-
-    wav_buffer.seek(0)
-    st.audio(wav_buffer.read(), format="audio/wav", sample_rate=sample_rate)
+        st.audio(audio_data, format="audio/wav", sample_rate=sample_rate)
 
 else:
     st.info("Generate audio to see the waveform and player")

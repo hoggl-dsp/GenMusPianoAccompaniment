@@ -27,6 +27,7 @@ class HarmonyGenerationParameters:
     chord_variety: float = 0.5
     harmonic_flow: float = 0.5
     functional_harmony: float = 0.5
+    duration_threshold: float = 0.5  # seconds
 
 
 class SongifyApp:
@@ -83,9 +84,27 @@ class SongifyApp:
             max_note_duration=melody_params.max_note_duration,
         )
 
+        print("Extracted Melody:", extracted_melody)
 
+        # Generate harmony from melody
+        generated_harmony = mh.harmonize(
+            extracted_melody,
+            congruence=harmony_params.chord_melody_congruence,
+            variety=harmony_params.chord_variety,
+            flow=harmony_params.harmonic_flow,
+            dissonance=harmony_params.functional_harmony,
+            duration_threshold=harmony_params.duration_threshold,
+        )
 
-        pass
+        print("Generated Harmony:", generated_harmony)
+
+        melody_score = utils.melody_to_score(extracted_melody)
+        harmony_score = utils.harmony_to_score(generated_harmony)
+
+        melody_audio = utils.synthesise_score(melody_score, sample_rate=self.sample_rate)
+        harmony_audio = utils.synthesise_score(harmony_score, sample_rate=self.sample_rate)
+
+        return melody_score, harmony_score, melody_audio, harmony_audio
 
     def get_generated_wav_file(self) -> str:
         """
@@ -132,7 +151,6 @@ def main(merge: bool = True):
 
     harmony = mh.harmonize(extracted_melody)
     harmony_score = utils.harmony_to_score(harmony)
-
 
     harmony_score.dump_midi(os.path.join('output', 'harmony_score.mid'))
 
