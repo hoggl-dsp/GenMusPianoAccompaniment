@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
+import librosa
+
 from main import HarmonyGenerationParameters, MelodyExtractionParameters, SongifyApp
 
 melody_params = MelodyExtractionParameters()
@@ -102,21 +104,28 @@ if uploaded_file is not None:
     # Display audio player for uploaded file
     st.audio(uploaded_file, format="audio/wav")
 
-    # Waveform visualization placeholder
-    st.markdown("**Waveform + Annotations**")
-    # Create a simple waveform visualization
-    fig, ax = plt.subplots(figsize=(12, 3))
-    t = np.linspace(0, 5, 1000)
-    waveform = np.sin(2 * np.pi * 440 * t) * np.exp(-t / 2)
-    ax.plot(t, waveform, "b-", linewidth=1)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Amplitude")
-    ax.set_title("Audio Waveform")
-    ax.grid(True, alpha=0.3)
-    st.pyplot(fig)
-    plt.close()
-    songify_app.load_audio(uploaded_file)
-    extracted_melody_data = songify_app.extract_melody()
+    try:
+        # Load audio file into SongifyApp
+        songify_app.load_audio(uploaded_file)
+
+        # Waveform visualization placeholder
+        st.markdown("**Waveform + Annotations**")
+
+        # Create a simple waveform visualization
+        fig, ax = plt.subplots(figsize=(12, 3))
+        librosa.display.waveshow(songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Amplitude")
+        ax.set_title("Audio Waveform")
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+    except Exception as e:
+        st.error(f"Error loading audio file: {e}")
+        st.session_state.uploaded_file = None
+        uploaded_file = None
+
 
 st.markdown("</div>", unsafe_allow_html=True)
 
