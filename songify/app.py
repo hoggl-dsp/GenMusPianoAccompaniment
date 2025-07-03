@@ -15,10 +15,7 @@ from songify.main import (HarmonyGenerationParameters,
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
 
-songify_app = SongifyApp(
-    melody_params=melody_params,
-    harmony_params=harmony_params,
-)
+songify_app = SongifyApp()
 
 # Page config
 st.set_page_config(page_title="Audio Processing App", page_icon="🎵", layout="wide")
