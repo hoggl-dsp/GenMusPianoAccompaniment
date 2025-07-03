@@ -252,7 +252,7 @@ def extract_melody(
     )
 
     # # Zero out pitches with low confidence
-    # pitches[pitch_confidence < 0.05] = 0
+    pitches[pitch_confidence < 0.1] = 0
 
     # Median Filtering
     median_filter_radius = median_filter_size // 2
@@ -338,20 +338,23 @@ def extract_melody(
         )
 
     melody = []
-    for onset, offset in zip(note_onsets, note_offsets):
+    for i, (onset, offset) in enumerate(zip(note_onsets, note_offsets)):
         assert onset < offset, "Onset must be before offset"
+
+        start_time = timesteps[onset].item()
+        duration = timesteps[offset].item() - start_time
+        if duration < min_note_duration:
+            continue
+        if duration > max_note_duration:
+            split_onset = int(torch.argmax(rms_flux[onset + int(min_note_duration * 1000) // frame_size_millis : offset]).item() + onset + min_note_duration * 1000 // frame_size_millis)
+            note_onsets.insert(i + 1, split_onset)
+            note_offsets.insert(i + 1, offset)
+            offset = split_onset - 1
+            duration = timesteps[offset].item() - start_time
 
         pitch = pitches[onset:offset].mode()[0].item()
         if pitch == 0:
             continue
-
-        start_time = timesteps[onset].item()
-        duration = timesteps[offset].item() - start_time
-
-        if duration < min_note_duration:
-            continue
-        if duration > max_note_duration:
-            duration = max_note_duration
 
         note_rms = (rms_db[onset:offset].mean().item() - offset_absolute_threshold_db) / (rms_db.max().item() - offset_absolute_threshold_db)
         rms_confidence_weight = 0.8
