@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib",
     "music21",
     "streamlit",
+    "silero_vad",
 ]
 
 [tool.setuptools]
