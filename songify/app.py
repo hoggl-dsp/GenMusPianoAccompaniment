@@ -143,7 +143,12 @@ with col1:
     # Onset algorithm dropdown
     onset_algorithm = st.selectbox(
         "Onset algorithm",
-        ["rms_energy", "rms_flux", "librosa", "silero"],
+        [
+            "rms_energy",
+            "rms_flux",
+            "librosa",
+            "silero"
+        ],
         index=0,
     )
 

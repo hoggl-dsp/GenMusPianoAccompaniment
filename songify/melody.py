@@ -94,6 +94,10 @@ def get_vad(
     sample_rate: int,
     frame_size_millis: int = 10,
     strategy: str = "default",
+    min_voice_duration_millis: int = 100,
+    max_voice_duration_millis: int = 2000,
+    offset_relative_threshold_db: float = -6.0,
+    offset_absolute_threshold_db: float = -48.0,
 ):
     """
     Voice Activity Detection (VAD) to filter out silent parts of the audio.
@@ -112,21 +116,22 @@ def get_vad(
     voice_onsets_seconds = None
 
     rms = get_rms_energy(audio, sample_rate, frame_size_millis, window="rectangular")
+    rms_max_pool_kernel_size = 5
     rms_max_pooled = torch.nn.functional.max_pool1d(
         rms.view(1, 1, -1),
-        kernel_size=9,
+        kernel_size=rms_max_pool_kernel_size,
         stride=1,
-        padding=4,
+        padding=rms_max_pool_kernel_size // 2,
     ).view(-1)
-    rms_absolute_threshold_db = -48.0  # Threshold in dB
-    rms_absolute_threshold = librosa.db_to_amplitude(rms_absolute_threshold_db)
+    rms_max_pooled = torch.roll(rms_max_pooled, rms_max_pool_kernel_size // 2)
+    rms_max_pooled[:rms_max_pool_kernel_size // 2] = 0
 
-    rms_relative_threshold_db = -6.0
-    rms_relative_threshold = librosa.db_to_amplitude(rms_relative_threshold_db)
+    rms_absolute_threshold = librosa.db_to_amplitude(offset_absolute_threshold_db).item()
+    rms_relative_threshold = librosa.db_to_amplitude(offset_relative_threshold_db).item()
 
     if strategy == "rms_energy":
-        voice_activity = voice_activity = (rms > rms_absolute_threshold.item()) & (
-            rms > rms_max_pooled * rms_relative_threshold.item()
+        voice_activity = (rms > rms_absolute_threshold) & (
+            rms > rms_max_pooled * rms_relative_threshold
         )
         return voice_activity
 
@@ -152,7 +157,7 @@ def get_vad(
             pre_avg=3,
             post_avg=3,
             delta=0.001,
-            wait=5
+            wait=int(min_voice_duration_millis / frame_size_millis),
         )
         voice_onsets_seconds = [
             peak * frame_size_millis / 1000.0 for peak in peaks
@@ -212,6 +217,8 @@ def extract_melody(
     median_filter_size: int = 5,
     min_note_duration: float = 0.1,
     max_note_duration: float = 2.0,
+    offset_relative_threshold_db: float = -6.0,
+    offset_absolute_threshold_db: float = -48.0,
     **kwargs,
 ):
     """
@@ -254,10 +261,21 @@ def extract_melody(
             pitches[i - median_filter_radius : i + median_filter_radius + 1]
         )
 
-    vad = get_vad(audio, sample_rate, frame_size_millis, strategy=onset_strategy)
+    vad = get_vad(
+        audio,
+        sample_rate,
+        frame_size_millis,
+        strategy=onset_strategy,
+        min_voice_duration_millis=min_note_duration * 1000,
+        max_voice_duration_millis=max_note_duration * 1000,
+        offset_relative_threshold_db=offset_relative_threshold_db,
+        offset_absolute_threshold_db=offset_absolute_threshold_db,
+    )
 
     rms = get_rms_energy(audio, sample_rate, frame_size_millis, window="rectangular")
     rms = rms / rms.max()  # Normalize RMS energy
+
+    rms_db = torch.from_numpy(librosa.amplitude_to_db(rms.numpy(), ref=1.0))
 
     rms_flux = torch.roll(rms, -1) - rms
     rms_flux[-1] = 0
@@ -335,9 +353,10 @@ def extract_melody(
         if duration > max_note_duration:
             duration = max_note_duration
 
+        note_rms = (rms_db[onset:offset].mean().item() - offset_absolute_threshold_db) / (rms_db.max().item() - offset_absolute_threshold_db)
         rms_confidence_weight = 0.8
-        velocity = 0.1 + 0.9 * (
-            rms_confidence_weight * rms[onset:offset].mean().item()
+        velocity = 0.2 + 0.8 * (
+            rms_confidence_weight * note_rms
             + (1.0 - rms_confidence_weight)
             * pitch_confidence[onset:offset].mean().item()
         )
@@ -365,82 +384,9 @@ def extract_melody(
 
     return melody
 
-    frame_size_secs = frame_size_millis / 1000.0
-    rms_threshold_db = -40.0  # RMS threshold in dB
-    rms_threshold = librosa.db_to_amplitude(rms_threshold_db)
-
-    melody = []
-    for i, peak in enumerate(peaks):
-        next_peak = peaks[i + 1] if i < len(peaks) - 1 else None
-        duration = 0.0
-        frame_idx = int(peak / frame_size_secs)
-        start_frame_index = frame_idx
-
-        while True:
-            if frame_idx >= len(pitches):
-                break
-            if pitches[frame_idx] <= 0:
-                break
-            if next_peak is not None and peak + duration > next_peak:
-                break
-
-            if (
-                audio[
-                    int((peak + duration) * sample_rate) : int(
-                        (peak + duration + frame_size_secs) * sample_rate
-                    )
-                ]
-                .square()
-                .mean()
-                .sqrt()
-                < rms_threshold
-            ):
-                break
-
-            duration += frame_size_secs
-            frame_idx += 1
-
-        if duration <= 0.0:
-            continue
-
-        pitch = pitches[start_frame_index:frame_idx].mode()[0]
-        rms = (
-            audio[int(peak * sample_rate) : int((peak + duration) * sample_rate)]
-            .square()
-            .mean()
-            .sqrt()
-        )
-        rms_db = librosa.amplitude_to_db(rms.item(), ref=1.0)
-        vel = 0.2 + 0.8 * (1.0 - rms_db / rms_threshold_db)
-        melody.append((pitch.item(), peak.item(), duration, vel))
-
-    return melody
-
-    melody = []
-    for i, (timestep, pitch, confidence) in enumerate(
-        zip(timesteps, pitches, pitch_confidence)
-    ):
-        if pitch == 0:
-            continue
-
-        if len(melody) > 0 and pitch == melody[-1][0]:
-            last_pitch, last_start, duration, last_vel = melody[-1]
-
-            duration += frame_size_secs
-            melody.pop()
-            melody.append((last_pitch, last_start, duration, last_vel))
-            continue
-
-        start_time = timestep.item()
-        duration = frame_size_secs
-        velocity = confidence.item()
-        melody.append((pitch.item(), start_time, duration, velocity))
-
-    return melody
-
 
 if __name__ == "__main__":
-    audio, Fs = torchaudio.load(os.path.join("data", "can i pet that dog.mp3"))
+    audio, Fs = torchaudio.load(os.path.join("data", "el niño pelon.mp3"))
     audio = audio.mean(dim=0)  # convert to mono
 
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -448,9 +394,9 @@ if __name__ == "__main__":
     extract_melody(
         audio,
         Fs,
-        onset_strategy="silero",
+        onset_strategy="rms_energy",
         pitch_strategy="pesto",
-        frame_size_millis=20,
+        frame_size_millis=10,
         ax_plot=ax,
     )
 
