@@ -19,8 +19,10 @@ class MelodyExtractionParameters:
     pitch_algorithm: str = "pesto"  # Options: "pesto", "librosa"
     frame_size: int = 512
     median_filter: int = 5
-    min_note_duration: float = 0.1
+    min_note_duration: float = 0.02
     max_note_duration: float = 2.0
+    offset_absolute_threshold_db: float = -48.0  # dB threshold for note onset detection
+    offset_relative_threshold_db: float = -6.0  # dB threshold for note offset detection
 
 
 @dataclass
@@ -91,6 +93,9 @@ class SongifyApp:
             median_filter_size=melody_params.median_filter,
             min_note_duration=melody_params.min_note_duration,
             max_note_duration=melody_params.max_note_duration,
+            offset_absolute_threshold_db=melody_params.offset_absolute_threshold_db,
+            offset_relative_threshold_db=melody_params.offset_relative_threshold_db,
+            # Additional kwargs for flexibility
             kwargs=kwargs,
         )
 

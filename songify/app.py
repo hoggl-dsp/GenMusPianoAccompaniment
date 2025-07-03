@@ -163,7 +163,7 @@ with col1:
 
     # Frame Size slider
     frame_size = st.slider(
-        "Frame Size (millis)", min_value=10, max_value=100, value=20, step=1
+        "Frame Size (ms)", min_value=10, max_value=100, value=20, step=1
     )
 
     # Median Filter slider
@@ -173,9 +173,29 @@ with col1:
 
     # Note Duration range slider
     note_duration = st.slider(
-        "Note Duration", min_value=0.0, max_value=1.0, value=(0.2, 0.8), step=0.01
+        "Note Duration (s)", min_value=0.02, max_value=1.0, value=(0.1, 1.0), step=0.01
     )
     st.caption(f"min: {note_duration[0]:.2f} - max: {note_duration[1]:.2f}")
+
+    # Offset Absolute Threshold slider
+    offset_absolute_threshold_db = st.slider(
+        "Offset Absolute Threshold (dB)",
+        min_value=-60.0,
+        max_value=0.0,
+        value=-40.0,
+        step=0.1,
+        help="Threshold for note loudness detection in dB",
+    )
+
+    offset_relative_threshold_db = st.slider(
+        "Offset Relative Threshold (dB)",
+        min_value=-12.0,
+        max_value=0.0,
+        value=-6.0,
+        step=0.1,
+        help="Relative threshold for note offset detection in dB",
+    )
+
 
     # Dry/Wet slider
     dry_wet = st.slider("Dry/Wet", min_value=0.0, max_value=1.0, value=0.6, step=0.01)
@@ -186,6 +206,8 @@ with col1:
     melody_params.median_filter = median_filter
     melody_params.min_note_duration = note_duration[0]
     melody_params.max_note_duration = note_duration[1]
+    melody_params.offset_absolute_threshold_db = offset_absolute_threshold_db
+    melody_params.offset_relative_threshold_db = offset_relative_threshold_db
 
     st.markdown("</div>", unsafe_allow_html=True)
 

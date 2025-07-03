@@ -251,8 +251,8 @@ def extract_melody(
         audio, sample_rate, frame_size_millis, pitch_strategy
     )
 
-    # Zero out pitches with low confidence
-    pitches[pitch_confidence < 0.25] = 0
+    # # Zero out pitches with low confidence
+    # pitches[pitch_confidence < 0.05] = 0
 
     # Median Filtering
     median_filter_radius = median_filter_size // 2
