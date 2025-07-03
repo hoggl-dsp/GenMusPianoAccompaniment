@@ -8,6 +8,9 @@ import numpy as np
 import streamlit as st
 import symusic
 
+import torch
+import torchaudio
+
 from songify import utils
 from songify.main import (HarmonyGenerationParameters,
                           MelodyExtractionParameters, SongifyApp)
@@ -264,10 +267,16 @@ if st.button("🎵 Generate!", type="primary"):
             assert original_audio is not None, "Audio data is not loaded."
             assert sample_rate is not None, "Sample rate is not set."
 
+            print("Original audio shape:", original_audio.shape)
+            print("Melody audio shape:", melody_audio.shape)
+            print("Harmony audio shape:", harmony_audio.shape)
+
             # Combine and normalize
             generated_audio = utils.mix_audio(
                 melody_audio, harmony_audio, blend=0.5, stereo=True
             )
+
+            print("Generated audio shape before mixing:", generated_audio.shape)
 
             output_audio = utils.mix_audio(
                 original_audio,
@@ -347,15 +356,10 @@ with col2:
     if st.session_state.generated_audio is not None:
         # Create WAV file for download
         audio_data = st.session_state.generated_audio
-        sample_rate = 44100
-        audio_int16 = (audio_data * 32767).astype(np.int16)
+        sample_rate = songify_app.sample_rate
 
         wav_buffer = BytesIO()
-        with wave.open(wav_buffer, "wb") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(audio_int16.tobytes())
+        torchaudio.save(wav_buffer, torch.from_numpy(audio_data), sample_rate, format="wav", bits_per_sample=16)
 
         st.download_button(
             label="📥 Download Wav",
