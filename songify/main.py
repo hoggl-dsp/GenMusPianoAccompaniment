@@ -13,7 +13,9 @@ from songify import utils
 
 @dataclass
 class MelodyExtractionParameters:
-    onset_detection: str = "option1"  # Options: "option1", "option2", "option3"
+    onset_detection: str = (
+        "librosa"  # Options: "rms_energy", "rms_flux", "librosa", "silero"
+    )
     pitch_algorithm: str = "pesto"  # Options: "pesto", "librosa"
     frame_size: int = 512
     median_filter: int = 5
@@ -43,14 +45,25 @@ class SongifyApp:
         self.audio, self.sample_rate = torchaudio.load(streamlit_file)
 
     # Extract melody from audio file, and return annotated melody (plot)
-    def extract_melody(self) -> List[Tuple[Any, Any, Any]]:
-        print("Extracting melody with parameters:", self.melody_params)
-        pass
+    def extract_melody(self, melody_params, **kwargs) -> List[Tuple[Any, Any, Any]]:
+        print("Extracting melody with parameters:", melody_params)
+        _ = melody.extract_melody(
+            audio=self.audio,
+            sample_rate=self.sample_rate,
+            onset_strategy=melody_params.onset_detection.lower(),
+            pitch_strategy=melody_params.pitch_algorithm.lower(),
+            frame_size_millis=melody_params.frame_size,
+            median_filter_size=melody_params.median_filter,
+            min_note_duration=melody_params.min_note_duration,
+            max_note_duration=melody_params.max_note_duration,
+            kwargs=kwargs,
+        )
 
     def generate(
         self,
         melody_params: MelodyExtractionParameters,
         harmony_params: HarmonyGenerationParameters,
+        **kwargs: Any,
     ):
         print("Generating music with parameters:")
         print("Melody Parameters:", melody_params)
@@ -78,6 +91,7 @@ class SongifyApp:
             median_filter_size=melody_params.median_filter,
             min_note_duration=melody_params.min_note_duration,
             max_note_duration=melody_params.max_note_duration,
+            kwargs=kwargs,
         )
 
         print("Extracted Melody:", extracted_melody)

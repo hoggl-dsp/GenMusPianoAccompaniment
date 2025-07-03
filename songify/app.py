@@ -114,15 +114,16 @@ if uploaded_file is not None:
 
         # Create a simple waveform visualization
         fig, ax = plt.subplots(figsize=(12, 3))
-        librosa.display.waveshow(
-            songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
-        )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Amplitude")
-        ax.set_title("Audio Waveform")
-        ax.grid(True, alpha=0.3)
-        st.pyplot(fig)
-        plt.close()
+        if fig is not None and ax is not None:
+            librosa.display.waveshow(
+                songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
+            )
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Amplitude")
+            ax.set_title("Audio Waveform")
+            ax.grid(True, alpha=0.3)
+            st.pyplot(fig)
+            plt.close()
 
     except Exception as e:
         st.error(f"Error loading audio file: {e}")
@@ -142,9 +143,7 @@ with col1:
     # Onset algorithm dropdown
     onset_algorithm = st.selectbox(
         "Onset algorithm",
-        [
-            "Librosa",
-        ],
+        ["rms_energy", "rms_flux", "librosa", "silero"],
         index=0,
     )
 
@@ -342,7 +341,7 @@ with col2:
         wav_buffer = BytesIO()
         with wave.open(wav_buffer, "wb") as wav_file:
             wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
+            wav_file.setsampwidth(2)  # This could be a bug
             wav_file.setframerate(sample_rate)
             wav_file.writeframes(audio_int16.tobytes())
 
