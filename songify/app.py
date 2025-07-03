@@ -164,11 +164,6 @@ with col1:
         index=0,
     )
 
-    # Frame Size slider
-    frame_size = st.slider(
-        "Frame Size (ms)", min_value=10, max_value=100, value=20, step=1
-    )
-
     # Median Filter slider
     median_filter = st.slider(
         "Median Filter", min_value=1, max_value=11, value=3, step=2
@@ -205,7 +200,6 @@ with col1:
 
     melody_params.onset_detection = onset_algorithm
     melody_params.pitch_algorithm = pitch_algorithm
-    melody_params.frame_size = frame_size
     melody_params.median_filter = median_filter
     melody_params.min_note_duration = note_duration[0]
     melody_params.max_note_duration = note_duration[1]
