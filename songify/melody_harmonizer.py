@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import music21
 from preferred_chord_transitions import (IMPOSSIBLE_COMBINATIONS,
-                                         chord_mappings, preferred_transitions)
+                                         chord_mappings, preferred_transitions, cadence_resolutions)
 
 from songify import utils
 
@@ -383,6 +383,30 @@ class FitnessEvaluator:
         )  # worst case: 5 dissonant notes per chord
         return 1 - (penalty / max_possible if max_possible else 0)
 
+    def _cadence_fitness(self, chord_sequence):
+    # """
+    # Evaluates whether the last two chords in the sequence form a cadence.
+    # Adds a bonus score if they do.
+
+    # Args:
+    #     chord_sequence (list of str): A list of chord names (e.g., ["C", "G", "Am", "F"]).
+
+    # Returns:
+    #     int: Cadence bonus score (0 if no cadence, positive bonus if cadence found).
+    # """
+        if len(chord_sequence) < 2:
+            return 0  # Not enough chords to evaluate cadence
+
+        penultimate_chord = chord_sequence[-2]
+        final_chord = chord_sequence[-1]
+
+        # Check if penultimate chord resolves to final chord
+        if final_chord in cadence_resolutions:
+            if penultimate_chord in cadence_resolutions[final_chord]:
+                return 1  # Bonus for cadence
+
+        return 0  # No cadence found
+
 
 def create_score(melody, starts, chord_sequence, chord_mappings):
     """
@@ -576,7 +600,7 @@ def fill_arpeggio_between_chords(
 
     return filled
 
-def harmonize(data, congruence, variety, flow, dissonance, duration_threshold):
+def harmonize(data, congruence, variety, flow, dissonance, cadence, duration_threshold):
     pitch = [midi_note_to_note_string(note[0]) for note in data]
     starts = [note[1] for note in data]
     durations = [note[2] for note in data]
@@ -587,6 +611,7 @@ def harmonize(data, congruence, variety, flow, dissonance, duration_threshold):
         "chord_variety": variety,
         "harmonic_flow": flow,
         "penalize_dissonance": dissonance,
+        "cadence_fitness": cadence,
     }
 
     # Instantiate objects for generating harmonization
