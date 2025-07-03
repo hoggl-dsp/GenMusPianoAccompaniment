@@ -219,6 +219,16 @@ with col2:
         step=0.01,
         format="%.3f",
     )
+    
+    cadence = st.number_input(
+        "cadence: float",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.7,
+        step=0.01,
+        format="%.3f",
+    )
+        
     duration_threshold = st.slider(
         "Duration Threshold (seconds)",
         min_value=0.1,
@@ -231,6 +241,7 @@ with col2:
     harmony_params.chord_variety = variety
     harmony_params.harmonic_flow = flow
     harmony_params.dissonance = dissonance
+    harmony_params.cadence = cadence
     harmony_params.duration_threshold = duration_threshold
     st.markdown("</div>", unsafe_allow_html=True)
 

@@ -27,6 +27,7 @@ class HarmonyGenerationParameters:
     chord_variety: float = 0.5
     harmonic_flow: float = 0.5
     dissonance: float = 0.5
+    cadence: float = 0.5  
     duration_threshold: float = 0.5  # seconds
 
 
@@ -89,6 +90,7 @@ class SongifyApp:
             variety=harmony_params.chord_variety,
             flow=harmony_params.harmonic_flow,
             dissonance=harmony_params.dissonance,
+            cadence=harmony_params.cadence,
             duration_threshold=harmony_params.duration_threshold,
         )
 
