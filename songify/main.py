@@ -46,6 +46,7 @@ class SongifyApp:
         # file = os.path.join('data', 'Capn Holt 1.mp3')
         streamlit_file.seek(0)
         self.audio, self.sample_rate = torchaudio.load(streamlit_file)
+        self.audio = self.audio / self.audio.abs().max()
 
     # Extract melody from audio file, and return annotated melody (plot)
     def extract_melody(self, melody_params, **kwargs) -> List[Tuple[Any, Any, Any]]:

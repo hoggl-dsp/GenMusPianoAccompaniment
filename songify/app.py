@@ -184,7 +184,7 @@ with col1:
     offset_absolute_threshold_db = st.slider(
         "Offset Absolute Threshold (dB)",
         min_value=-60.0,
-        max_value=0.0,
+        max_value=-12.0,
         value=-40.0,
         step=0.1,
         help="Threshold for note loudness detection in dB",
@@ -193,7 +193,7 @@ with col1:
     offset_relative_threshold_db = st.slider(
         "Offset Relative Threshold (dB)",
         min_value=-12.0,
-        max_value=0.0,
+        max_value=-2.0,
         value=-6.0,
         step=0.1,
         help="Relative threshold for note offset detection in dB",
