@@ -7,6 +7,7 @@ from preferred_chord_transitions import (IMPOSSIBLE_COMBINATIONS,
 
 from songify import utils
 
+chord_tuple = tuple[list[int], float, float, float]  # (notes, start, duration, velocity)
 
 # @dataclass(frozen=True)
 class MelodyData:
@@ -519,6 +520,61 @@ def filter_chords_by_duration(harmony, duration_threshold=0.1):
             filtered_harmony.append((chord_notes, start, duration, velocity))
     return filtered_harmony
 
+def fill_arpeggio_between_chords(
+    harmony_sequence: list[chord_tuple],
+    k: int,
+    direction: str = "ascending"
+) -> list[chord_tuple]:
+    filled = harmony_sequence.copy()
+    empty_indices = [i for i, (chord, *_rest) in enumerate(filled) if not chord]
+
+    if k > len(empty_indices):
+        k = len(empty_indices)
+    if k == 0:
+        return filled
+
+    # Choose k empty slots to fill (preserve timing order)
+    selected_indices = sorted(random.sample(empty_indices, k))
+
+    # Process each
+    for idx in selected_indices:
+        # Find previous and next non-empty chords
+        prev_chord = next_chord = []
+        for i in range(idx - 1, -1, -1):
+            if filled[i][0]:
+                prev_chord = filled[i][0]
+                break
+        for i in range(idx + 1, len(filled)):
+            if filled[i][0]:
+                next_chord = filled[i][0]
+                break
+
+        # Merge pitch content
+        chord_pool = sorted(set(prev_chord + next_chord))
+
+        # If no real chord context, skip
+        if not chord_pool:
+            continue
+
+        # Create arpeggio line
+        if direction == "ascending":
+            arpeggio = chord_pool
+        elif direction == "descending":
+            arpeggio = chord_pool[::-1]
+        elif direction == "random":
+            arpeggio = chord_pool[:]
+            random.shuffle(arpeggio)
+        else:
+            raise ValueError(f"Unknown direction: {direction}")
+
+        # Pick arpeggio note using round-robin
+        note = [arpeggio[idx % len(arpeggio)]]
+
+        # Preserve original timing
+        _, start, dur, vel = filled[idx]
+        filled[idx] = (note, start, dur, vel * 0.5)
+
+    return filled
 
 def harmonize(data, congruence, variety, flow, dissonance, duration_threshold):
     pitch = [midi_note_to_note_string(note[0]) for note in data]
@@ -552,7 +608,7 @@ def harmonize(data, congruence, variety, flow, dissonance, duration_threshold):
 
     # Generate chords with genetic algorithm
     harmony = harmonizer.generate(generations=1000)
-
+    harmony = fill_arpeggio_between_chords(harmony,k=10,direction = "random")
     harmony = chord_strings_to_midi_chords(harmony)
     melody_midi_notes = [note_string_to_midi_note(note) for note in pitch]
     inverted_harmony = invert_chords_below_melody(harmony, melody_midi_notes)
