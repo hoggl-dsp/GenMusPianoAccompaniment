@@ -214,3 +214,30 @@ IMPOSSIBLE_COMBINATIONS = {
     "A#aug": ["C", "D#", "F"],
     "Baug": ["C#", "E", "F#"],
 }
+cadence_resolutions = {
+    "C": ['G', 'F', 'Am'],
+    "C#": ['G#', 'F#', 'A#m'],
+    "D":   ['A', 'G', 'Bm'],
+    "D#":  ['A#', 'G#', 'Cm'],
+    "E":   ['B', 'A', 'C#m'],
+    "F":   ['C', 'A#', 'Dm'],
+    "F#":  ['C#', 'B', 'D#m'],
+    "G":   ['D', 'C', 'Em'],
+    "G#":  ['D#', 'C#', 'Fm'],
+    "A":   ['E', 'D', 'F#m'],
+    "A#":  ['F', 'D#', 'Gm'],
+    "B":   ['F#', 'E', 'G#m'],
+
+    "Cm":  ['Gm', 'Fm'],
+    "C#m": ['G#m', 'F#m'],
+    "Dm":  ['Am', 'Gm'],
+    "D#m": ['A#m', 'G#m'],
+    "Em":  ['Bm', 'Am'],
+    "Fm":  ['Cm', 'A#m'],
+    "F#m": ['C#m', 'Bm'],
+    "Gm":  ['Dm', 'Cm'],
+    "G#m": ['D#m', 'C#m'],
+    "Am":  ['Em', 'Dm'],
+    "A#m": ['Fm', 'D#m'],
+    "Bm":  ['F#m', 'Em']
+}
