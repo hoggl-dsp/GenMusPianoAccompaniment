@@ -16,16 +16,19 @@ flowchart TD
     AD-->ME{Merge orig and synthed}
 
     %% Highlight input section
-    subgraph inputBlock
-        A
+    subgraph pitch_extraction[Pitch extraction]
         P
         D
+        M
     end
 
     %% Highlight MIDI generation section
-    subgraph midiBlock
+    subgraph harmonization[Harmonization]
         H
         T
+    end
+
+    subgraph post_processing[Postprocessing]
         S
         AD
         ME
