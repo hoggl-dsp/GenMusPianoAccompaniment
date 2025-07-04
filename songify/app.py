@@ -256,16 +256,33 @@ with col2:
         "Duration Threshold (seconds)",
         min_value=0.1,
         max_value=2.0,
-        value=0.5,
+        value=0.1,
         step=0.01,
     )
-
+    
+    population_size = st.slider(
+        "Initial Population Size",
+        min_value=10,
+        max_value=100,
+        value=75,
+        step=1,
+    )
+    generations = st.slider(
+        "Number of Generations ",
+        min_value=100,
+        max_value=1000,
+        value=750,
+        step=50,
+    )
+    
     harmony_params.chord_melody_congruence = congruence
     harmony_params.chord_variety = variety
     harmony_params.harmonic_flow = flow
     harmony_params.dissonance = dissonance
     harmony_params.cadence = cadence
     harmony_params.duration_threshold = duration_threshold
+    harmony_params.population_size = population_size
+    harmony_params.generations = generations
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Generate Button
