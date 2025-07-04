@@ -4,7 +4,7 @@ A system for generating musical accompaniment to voice, whether sung, spoken or 
 
 ## Stages
 ```mermaid
-graph TD;
+flowchart TD
     A{Audio}-->P{Pitch}
     A-->D{Descriptors}
     P-->M{Melody}
@@ -16,14 +16,14 @@ graph TD;
     AD-->ME{Merge orig and synthed}
 
     %% Highlight input section
-    rect inputBlock
+    subgraph inputBlock
         A
         P
         D
     end
 
     %% Highlight MIDI generation section
-    rect midiBlock
+    subgraph midiBlock
         H
         T
         S
