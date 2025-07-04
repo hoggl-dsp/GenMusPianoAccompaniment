@@ -112,7 +112,7 @@ class SongifyApp:
             cadence=harmony_params.cadence,
             duration_threshold=harmony_params.duration_threshold,
             population_size=harmony_params.population_size, 
-            generations=generations
+            generations=harmony_params.generations
         )
 
         print("Generated Harmony:", generated_harmony)
