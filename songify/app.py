@@ -369,12 +369,10 @@ if st.button("🎵 Generate!", type="primary", use_container_width=True):
                 blend=dry_wet,
                 stereo=True,
             )
-            st.success(f"Generated audio shape: {output_audio.shape}")
 
             st.session_state.melody_score = melody_score
             st.session_state.harmony_score = harmony_score
 
-            st.session_state.generated_audio = output_audio.numpy()
 
         st.success("Audio generated successfully!")
         st.balloons()
