@@ -1,5 +1,6 @@
 from io import BytesIO
-
+import os
+import tempfile
 import librosa
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -7,12 +8,26 @@ import torch
 import torchaudio
 from streamlit_advanced_audio import WaveSurferOptions, audix
 
-from songify import utils
+from songify import utils, youtube
 from songify.main import (
     HarmonyGenerationParameters,
     MelodyExtractionParameters,
     SongifyApp,
 )
+
+def get_session_temp_dir():
+    """
+    Creates and manages a temporary directory for the Streamlit session.
+    The directory is stored in st.session_state and will be cleaned up
+    when the session ends.
+    """
+    if "session_data_dir" not in st.session_state:
+        # Create a TemporaryDirectory object.
+        # It's a context manager, but we're storing the object itself.
+        # Its __exit__ method will be called on garbage collection.
+        st.session_state.session_data_dir = tempfile.TemporaryDirectory()
+        print(f"Created new session temporary directory: {st.session_state.session_data_dir.name}")
+    return st.session_state.session_data_dir.name
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
@@ -107,7 +122,25 @@ with tab3:
     )
 
     if youtube_url:
-        st.info("🚧 YouTube audio loading is not yet implemented. Coming soon!")
+        with st.spinner("Downloading Youtube Video..."):
+            session_temp_dir = get_session_temp_dir()
+
+            video_file = youtube.download_youtube_video(
+                youtube_url, session_temp_dir
+            )
+
+            st.session_state.video_file = video_file
+
+        if st.session_state.video_file:
+            # Load the audio file into the app
+            st.video(st.session_state.video_file, width=300)
+
+            audio_file = youtube.extract_audio_from_video(video_file, session_temp_dir)
+            if audio_file:
+                current_audio_file = audio_file
+                audio_source = "youtube"
+                
+                st.success(f"Downloaded YouTube video: {os.path.basename(video_file).split('.')[0]}")
 
 # Process the selected audio source
 if current_audio_file is not None:
@@ -116,12 +149,18 @@ if current_audio_file is not None:
     # Display advanced audio player for the current audio file
     if audio_source == "file":
         upload_options = WaveSurferOptions(
-            wave_color="#2B88D9", progress_color="#b91d47", height=80
+            wave_color="#2B88D9", progress_color="#4ecdc4", height=80
         )
-    else:  # mic recording
+    elif audio_source == "mic":  # mic recording
         upload_options = WaveSurferOptions(
-            wave_color="#ff6b6b", progress_color="#4ecdc4", height=80
+            wave_color="#e6ff67", progress_color="#4ecdc4", height=80
         )
+    elif audio_source == "youtube":  # youtube audio
+        upload_options = WaveSurferOptions(
+            wave_color="#ff4444", progress_color="#4ecdc4", height=80
+        )
+    else:
+        raise ValueError("Unknown audio source")
 
     result = audix(current_audio_file, wavesurfer_options=upload_options)
 
@@ -145,9 +184,9 @@ if current_audio_file is not None:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Main controls section
-col1, col2 = st.columns([1, 1])
+melody_col, harmony_col = st.columns([1, 1])
 
-with col1:
+with melody_col:
     st.markdown('<div class="control-section">', unsafe_allow_html=True)
     st.markdown("### Melody Extraction")
 
@@ -207,7 +246,7 @@ with col1:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-with col2:
+with harmony_col:
     st.markdown('<div class="harmonizer-section">', unsafe_allow_html=True)
     st.markdown("### Harmonizer")
 
@@ -286,16 +325,16 @@ with col2:
 
 st.markdown("---")
 
-col1, col2, col3 = st.columns([0.5, 1, 1])
+output_col1, output_col2, output_col3 = st.columns([0.5, 1, 1])
 
-with col1:
+with output_col1:
     include_melody = st.checkbox(
         "Include Melody",
         value=True,
         help="Include the extracted melody in the output audio along with the harmony.",
     )
 
-with col2:
+with output_col2:
     humanise_amount = st.slider(
         "Humanise (ms)",
         min_value=0,
@@ -305,7 +344,7 @@ with col2:
         help="Humanise the performance of the generated audio.",
     )
 
-with col3:
+with output_col3:
     dry_wet = st.slider(
         "Dry / Wet",
         min_value=0.0,
@@ -357,7 +396,6 @@ if st.button("🎵 Generate!", type="primary"):
                 blend=dry_wet,
                 stereo=True,
             )
-            st.success(f"Generated audio shape: {output_audio.shape}")
 
             st.session_state.melody_score = melody_score
             st.session_state.harmony_score = harmony_score
@@ -413,9 +451,9 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 # Download Section
 st.markdown('<div class="download-section">', unsafe_allow_html=True)
-col1, col2 = st.columns(2)
+midi_download_col, audio_download_col, video_download_col = st.columns(3)
 
-with col1:
+with midi_download_col:
     if st.session_state.generated_audio is not None:
         # Create MIDI file (simplified - just a placeholder)
         score = utils.merge_scores(
@@ -433,7 +471,7 @@ with col1:
     else:
         st.button("📥 Download Midi", disabled=True)
 
-with col2:
+with audio_download_col:
     if st.session_state.generated_audio is not None:
         # Create WAV file for download
         audio_data = st.session_state.generated_audio
@@ -456,6 +494,37 @@ with col2:
         )
     else:
         st.button("📥 Download Wav", disabled=True)
+
+with video_download_col:
+    if st.session_state.video_file is not None and st.session_state.generated_audio is not None:
+        video_file = st.session_state.video_file
+
+        new_audio = st.session_state.generated_audio
+        new_audio_file = os.path.join(get_session_temp_dir(), "new_audio.wav")
+        torchaudio.save(
+            new_audio_file,
+            torch.from_numpy(new_audio),
+            songify_app.sample_rate,
+            format="wav",
+            bits_per_sample=16,
+        )
+
+        new_video_file = youtube.replace_audio_in_video(
+            video_file, new_audio_file, get_session_temp_dir()
+        )
+
+        if new_video_file:
+            st.download_button(
+                label="📥 Download Video",
+                data=open(new_video_file, "rb").read(),
+                file_name=f"replaced_audio_{os.path.basename(video_file)}",
+                mime="video/mp4",
+            )
+        else:
+            st.error("Failed to replace audio in video.")
+    
+    else:
+        st.button("📥 Download Video", disabled=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
 

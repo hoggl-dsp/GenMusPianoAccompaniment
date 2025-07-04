@@ -19,6 +19,7 @@ dependencies = [
     "streamlit",
     "streamlit-advanced-audio",
     "silero_vad",
+    "ffmpeg-python",
 ]
 
 [tool.setuptools]
