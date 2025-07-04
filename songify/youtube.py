@@ -34,7 +34,7 @@ def download_youtube_video(video_url, output_dir):
 
     assert output_file is not None, "Output file should not be None after download"
     assert os.path.exists(output_file), f"Downloaded file does not exist: {output_file}"
-    return output_files
+    return output_file
 
 
 if __name__ == "__main__":
