@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 import symusic
-
 import torch
 import torchaudio
 
 from songify import utils
-from songify.main import (HarmonyGenerationParameters,
-                          MelodyExtractionParameters, SongifyApp)
+from songify.main import (
+    HarmonyGenerationParameters,
+    MelodyExtractionParameters,
+    SongifyApp,
+)
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
@@ -101,6 +103,7 @@ uploaded_file = st.file_uploader(
     "Choose an audio file",
     type=["wav", "mp3", "flac", "ogg"],
     help="Upload your audio file for processing",
+    key="main_audio_uploader"
 )
 
 if uploaded_file is not None:
