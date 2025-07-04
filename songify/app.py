@@ -280,11 +280,11 @@ with col1:
 
 with col2:
     humanise_amount = st.slider(
-        "Humanise",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.2,
-        step=0.01,
+        "Humanise (ms)",
+        min_value=0,
+        max_value=10,
+        value=5,
+        step=1,
         help="Humanise the performance of the generated audio.",
     )
 
@@ -308,7 +308,9 @@ if st.button("🎵 Generate!", type="primary", use_container_width=True):
 
             melody_score, harmony_score, melody_audio, harmony_audio = (
                 songify_app.generate(
-                    melody_params=melody_params, harmony_params=harmony_params
+                    melody_params=melody_params, 
+                    harmony_params=harmony_params,
+                    humanise=humanise_amount / 1000.0,  # Convert ms to seconds
                 )
             )
 
