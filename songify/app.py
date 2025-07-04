@@ -1,6 +1,7 @@
-from io import BytesIO
 import os
 import tempfile
+from io import BytesIO
+
 import librosa
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -14,6 +15,7 @@ from songify.main import (
     MelodyExtractionParameters,
     SongifyApp,
 )
+
 
 def get_session_temp_dir():
     """
@@ -74,6 +76,8 @@ if "generated_audio" not in st.session_state:
     st.session_state.generated_audio = None
 if "uploaded_file" not in st.session_state:
     st.session_state.uploaded_file = None
+if "video_file" not in st.session_state:
+    st.session_state.video_file = None
 
 # Header
 st.markdown('<h1 class="main-title">Songify</h1>', unsafe_allow_html=True)
@@ -97,7 +101,7 @@ with tab1:
         "Choose an audio file",
         type=["wav", "mp3", "flac", "ogg"],
         help="Upload your audio file for processing",
-        key="main_audio_uploader",
+        key="audio_file_uploader",
     )
 
     if uploaded_file is not None:
