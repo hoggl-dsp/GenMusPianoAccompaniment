@@ -496,7 +496,7 @@ with audio_download_col:
         st.button("📥 Download Wav", disabled=True)
 
 with video_download_col:
-    if st.session_state.video_file is not None and st.session_state.generated_audio is not None:
+    if st.session_state.get("video_file") is not None and st.session_state.get("generated_audio") is not None:
         video_file = st.session_state.video_file
 
         new_audio = st.session_state.generated_audio
