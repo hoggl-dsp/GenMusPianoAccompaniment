@@ -600,7 +600,7 @@ def fill_arpeggio_between_chords(
 
     return filled
 
-def harmonize(data, congruence, variety, flow, dissonance, cadence, duration_threshold):
+def harmonize(data, congruence, variety, flow, dissonance, cadence, duration_threshold, population_size,generations):
     pitch = [midi_note_to_note_string(note[0]) for note in data]
     starts = [note[1] for note in data]
     durations = [note[2] for note in data]
@@ -626,13 +626,13 @@ def harmonize(data, congruence, variety, flow, dissonance, cadence, duration_thr
     harmonizer = GeneticMelodyHarmonizer(
         melody_data=melody_data,
         chords=list(chord_mappings.keys()),
-        population_size=100,  # TODO: Change this to increase
+        population_size=population_size, 
         mutation_rate=0.05,
         fitness_evaluator=fitness_evaluator,
     )
 
     # Generate chords with genetic algorithm
-    harmony = harmonizer.generate(generations=1000)
+    harmony = harmonizer.generate(generations)
     harmony = fill_arpeggio_between_chords(harmony,k=10,direction = "random")
     harmony = chord_strings_to_midi_chords(harmony)
     melody_midi_notes = [note_string_to_midi_note(note) for note in pitch]
