@@ -1,5 +1,6 @@
 from io import BytesIO
-
+import os
+import tempfile
 import librosa
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -7,12 +8,26 @@ import torch
 import torchaudio
 from streamlit_advanced_audio import WaveSurferOptions, audix
 
-from songify import utils
+from songify import utils, youtube
 from songify.main import (
     HarmonyGenerationParameters,
     MelodyExtractionParameters,
     SongifyApp,
 )
+
+def get_session_temp_dir():
+    """
+    Creates and manages a temporary directory for the Streamlit session.
+    The directory is stored in st.session_state and will be cleaned up
+    when the session ends.
+    """
+    if "session_data_dir" not in st.session_state:
+        # Create a TemporaryDirectory object.
+        # It's a context manager, but we're storing the object itself.
+        # Its __exit__ method will be called on garbage collection.
+        st.session_state.session_data_dir = tempfile.TemporaryDirectory()
+        print(f"Created new session temporary directory: {st.session_state.session_data_dir.name}")
+    return st.session_state.session_data_dir.name
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
@@ -108,6 +123,18 @@ with tab3:
 
     if youtube_url:
         st.info("🚧 YouTube audio loading is not yet implemented. Coming soon!")
+
+        with st.spinner("Downloading Youtube Video..."):
+            session_temp_dir = get_session_temp_dir()
+
+            video_file = youtube.download_youtube_video(
+                youtube_url, session_temp_dir
+            )
+
+        if video_file:
+            st.success(f"Downloaded YouTube video: {os.path.basename(video_file).split('.')[0]}")
+            # Load the audio file into the app
+            st.video(video_file)
 
 # Process the selected audio source
 if current_audio_file is not None:
