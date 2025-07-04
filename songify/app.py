@@ -136,22 +136,6 @@ if current_audio_file is not None:
         # Load audio file into SongifyApp
         songify_app.load_audio(current_audio_file)
 
-        # Waveform visualization placeholder
-        st.markdown("**Waveform + Annotations**")
-
-        # Create a simple waveform visualization
-        fig, ax = plt.subplots(figsize=(12, 3))
-        if fig is not None and ax is not None:
-            librosa.display.waveshow(
-                songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
-            )
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Amplitude")
-            ax.set_title(f"Audio Waveform - {audio_source.capitalize()} Input")
-            ax.grid(True, alpha=0.3)
-            st.pyplot(fig)
-            plt.close()
-
     except Exception as e:
         st.error(f"Error loading audio file: {e}")
         st.session_state.uploaded_file = None
@@ -393,21 +377,6 @@ st.markdown("### ▶️ Generated Audio Waveform Player")
 
 if st.session_state.generated_audio is not None:
     with st.spinner("Preparing audio visualisation playback. Let it cook..."):
-        # Display waveform
-        fig, ax = plt.subplots(figsize=(12, 4))
-        librosa.display.waveshow(
-            st.session_state.generated_audio,
-            sr=songify_app.sample_rate,
-            ax=ax,
-            alpha=0.5,
-        )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Amplitude")
-        ax.set_title("Generated Audio Waveform")
-        ax.grid(True, alpha=0.3)
-        st.pyplot(fig)
-        plt.close()
-
         # Convert to audio format for playback
         audio_data = st.session_state.generated_audio
         sample_rate = songify_app.sample_rate
