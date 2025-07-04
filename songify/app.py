@@ -9,6 +9,7 @@ import streamlit as st
 import symusic
 import torch
 import torchaudio
+from streamlit_advanced_audio import WaveSurferOptions, audix
 
 from songify import utils
 from songify.main import (
@@ -108,8 +109,19 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
     st.session_state.uploaded_file = uploaded_file
-    # Display audio player for uploaded file
-    st.audio(uploaded_file, format="audio/wav")
+    # Display advanced audio player for uploaded file
+    upload_options = WaveSurferOptions(
+        wave_color="#2B88D9", progress_color="#b91d47", height=80
+    )
+
+    result = audix(uploaded_file, wavesurfer_options=upload_options)
+
+    # Track playback status
+    if result:
+        if result["selectedRegion"]:
+            st.write(
+                f"Selected: {result['selectedRegion']['start']:.2f}s - {result['selectedRegion']['end']:.2f}s"
+            )
 
     try:
         # Load audio file into SongifyApp
@@ -245,7 +257,7 @@ with col2:
         step=0.01,
         format="%.3f",
     )
-    
+
     cadence = st.number_input(
         "cadence: float",
         min_value=0.0,
@@ -254,7 +266,7 @@ with col2:
         step=0.01,
         format="%.3f",
     )
-        
+
     duration_threshold = st.slider(
         "Duration Threshold (seconds)",
         min_value=0.1,
@@ -363,7 +375,30 @@ if st.session_state.generated_audio is not None:
         audio_data = st.session_state.generated_audio
         sample_rate = songify_app.sample_rate
 
-        st.audio(audio_data, format="audio/wav", sample_rate=sample_rate)
+        # Create advanced audio player for generated audio
+        generated_options = WaveSurferOptions(
+            wave_color="#ff6b6b", progress_color="#4ecdc4", height=120
+        )
+
+        # Convert numpy array to BytesIO for audix
+        wav_buffer = BytesIO()
+        torchaudio.save(
+            wav_buffer,
+            torch.from_numpy(audio_data),
+            sample_rate,
+            format="wav",
+            bits_per_sample=16,
+        )
+        wav_buffer.seek(0)
+
+        result = audix(wav_buffer, wavesurfer_options=generated_options)
+
+        # Track playback status for generated audio
+        if result:
+            if result["selectedRegion"]:
+                st.write(
+                    f"Selected: {result['selectedRegion']['start']:.2f}s - {result['selectedRegion']['end']:.2f}s"
+                )
 
 else:
     st.info("Generate audio to see the waveform and player")
@@ -399,7 +434,13 @@ with col2:
         sample_rate = songify_app.sample_rate
 
         wav_buffer = BytesIO()
-        torchaudio.save(wav_buffer, torch.from_numpy(audio_data), sample_rate, format="wav", bits_per_sample=16)
+        torchaudio.save(
+            wav_buffer,
+            torch.from_numpy(audio_data),
+            sample_rate,
+            format="wav",
+            bits_per_sample=16,
+        )
 
         st.download_button(
             label="📥 Download Wav",
