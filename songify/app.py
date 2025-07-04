@@ -129,9 +129,11 @@ with tab3:
                 youtube_url, session_temp_dir
             )
 
-        if video_file:
+            st.session_state.video_file = video_file
+
+        if st.session_state.video_file:
             # Load the audio file into the app
-            st.video(video_file)
+            st.video(st.session_state.video_file, width=300)
 
             audio_file = youtube.extract_audio_from_video(video_file, session_temp_dir)
             if audio_file:
@@ -182,9 +184,9 @@ if current_audio_file is not None:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Main controls section
-col1, col2 = st.columns([1, 1])
+melody_col, harmony_col = st.columns([1, 1])
 
-with col1:
+with melody_col:
     st.markdown('<div class="control-section">', unsafe_allow_html=True)
     st.markdown("### Melody Extraction")
 
@@ -244,7 +246,7 @@ with col1:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-with col2:
+with harmony_col:
     st.markdown('<div class="harmonizer-section">', unsafe_allow_html=True)
     st.markdown("### Harmonizer")
 
@@ -323,16 +325,16 @@ with col2:
 
 st.markdown("---")
 
-col1, col2, col3 = st.columns([0.5, 1, 1])
+output_col1, output_col2, output_col3 = st.columns([0.5, 1, 1])
 
-with col1:
+with output_col1:
     include_melody = st.checkbox(
         "Include Melody",
         value=True,
         help="Include the extracted melody in the output audio along with the harmony.",
     )
 
-with col2:
+with output_col2:
     humanise_amount = st.slider(
         "Humanise (ms)",
         min_value=0,
@@ -342,7 +344,7 @@ with col2:
         help="Humanise the performance of the generated audio.",
     )
 
-with col3:
+with output_col3:
     dry_wet = st.slider(
         "Dry / Wet",
         min_value=0.0,
@@ -449,9 +451,9 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 # Download Section
 st.markdown('<div class="download-section">', unsafe_allow_html=True)
-col1, col2 = st.columns(2)
+midi_download_col, audio_download_col, video_download_col = st.columns(3)
 
-with col1:
+with midi_download_col:
     if st.session_state.generated_audio is not None:
         # Create MIDI file (simplified - just a placeholder)
         score = utils.merge_scores(
@@ -469,7 +471,7 @@ with col1:
     else:
         st.button("📥 Download Midi", disabled=True)
 
-with col2:
+with audio_download_col:
     if st.session_state.generated_audio is not None:
         # Create WAV file for download
         audio_data = st.session_state.generated_audio
@@ -492,6 +494,37 @@ with col2:
         )
     else:
         st.button("📥 Download Wav", disabled=True)
+
+with video_download_col:
+    if st.session_state.video_file is not None and st.session_state.generated_audio is not None:
+        video_file = st.session_state.video_file
+
+        new_audio = st.session_state.generated_audio
+        new_audio_file = os.path.join(get_session_temp_dir(), "new_audio.wav")
+        torchaudio.save(
+            new_audio_file,
+            torch.from_numpy(new_audio),
+            songify_app.sample_rate,
+            format="wav",
+            bits_per_sample=16,
+        )
+
+        new_video_file = youtube.replace_audio_in_video(
+            video_file, new_audio_file, get_session_temp_dir()
+        )
+
+        if new_video_file:
+            st.download_button(
+                label="📥 Download Video",
+                data=open(new_video_file, "rb").read(),
+                file_name=f"replaced_audio_{os.path.basename(video_file)}",
+                mime="video/mp4",
+            )
+        else:
+            st.error("Failed to replace audio in video.")
+    
+    else:
+        st.button("📥 Download Video", disabled=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
 

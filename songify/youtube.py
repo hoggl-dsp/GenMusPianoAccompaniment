@@ -58,6 +58,36 @@ def extract_audio_from_video(video_file: str, output_dir: str):
     
     return audio_file
 
+def replace_audio_in_video(video_file: str, audio_file: str, output_dir: str):
+    """
+    Replaces the audio in a video file with a new audio file using ffmpeg.
+    
+    Args:
+        video_file (str): The path to the original video file.
+        audio_file (str): The path to the new audio file.
+        output_dir (str): The directory where the new video file will be saved.
+    
+    Returns:
+        str: The path to the new video file with replaced audio.
+    """
+    new_video_file = os.path.join(output_dir, f"replaced_audio_{os.path.basename(video_file)}")
+    
+    try:
+        video_stream = ffmpeg.input(video_file)
+        audio_stream = ffmpeg.input(audio_file)
+        
+        ffmpeg.output(
+            video_stream['v'], audio_stream['a'], 
+            new_video_file, 
+            vcodec='copy', 
+            acodec='aac'
+        ).run(overwrite_output=True)
+        
+        print(f"Audio replaced successfully in {new_video_file}")
+    except ffmpeg.Error as e:
+        print(f"An error occurred while replacing audio: {e}")
+    
+    return new_video_file
 
 if __name__ == "__main__":
     video_url = "https://www.youtube.com/watch?v=uvsPzuriDdA"
@@ -68,9 +98,11 @@ if __name__ == "__main__":
 
     video_file = download_youtube_video(video_url, output_dir)
     audio_file = extract_audio_from_video(video_file, output_dir)
+    replaced_video_file = replace_audio_in_video(video_file, audio_file, output_dir)
 
     print(f"Video file saved at: {video_file}")
     print(f"Audio file saved at: {audio_file}")
+    print(f"Replaced video file saved at: {replaced_video_file}")
 
     
 
