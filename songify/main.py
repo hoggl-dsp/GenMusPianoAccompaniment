@@ -67,6 +67,7 @@ class SongifyApp:
         self,
         melody_params: MelodyExtractionParameters,
         harmony_params: HarmonyGenerationParameters,
+        humanise: float = 0.0,
         **kwargs: Any,
     ):
         print("Generating music with parameters:")
@@ -119,6 +120,15 @@ class SongifyApp:
 
         melody_score = utils.melody_to_score(extracted_melody)
         harmony_score = utils.harmony_to_score(generated_harmony)
+
+        if humanise > 0:
+            print(f"Humanising scores with amount: {humanise}")
+            melody_score = utils.humanise_score(
+                melody_score, time_deviation=humanise
+            )
+            harmony_score = utils.humanise_score(
+                harmony_score, time_deviation=humanise
+            )
 
         melody_audio = utils.synthesise_score(
             melody_score, sample_rate=self.sample_rate

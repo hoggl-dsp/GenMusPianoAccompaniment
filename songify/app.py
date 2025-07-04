@@ -209,10 +209,6 @@ with col1:
         help="Relative threshold for note offset detection in dB",
     )
 
-
-    # Dry/Wet slider
-    dry_wet = st.slider("Dry/Wet", min_value=0.0, max_value=1.0, value=0.6, step=0.01)
-
     melody_params.onset_detection = onset_algorithm
     melody_params.pitch_algorithm = pitch_algorithm
     melody_params.median_filter = median_filter
@@ -268,9 +264,9 @@ with col2:
     )
 
     duration_threshold = st.slider(
-        "Duration Threshold (seconds)",
-        min_value=0.1,
-        max_value=2.0,
+        "Chord Duration Threshold (seconds)",
+        min_value=0.05,
+        max_value=0.2,
         value=0.1,
         step=0.01,
     )
@@ -300,15 +296,50 @@ with col2:
     harmony_params.generations = generations
     st.markdown("</div>", unsafe_allow_html=True)
 
+st.markdown("---")
+
+col1, col2, col3 = st.columns([0.5, 1, 1])
+
+with col1:
+    include_melody = st.checkbox(
+        "Include Melody",
+        value=True,
+        help="Include the extracted melody in the output audio along with the harmony.",
+    )
+
+with col2:
+    humanise_amount = st.slider(
+        "Humanise (ms)",
+        min_value=0,
+        max_value=10,
+        value=5,
+        step=1,
+        help="Humanise the performance of the generated audio.",
+    )
+
+with col3:
+    dry_wet = st.slider(
+        "Dry / Wet",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.6,
+        step=0.01,
+        help="Adjust the balance between the original audio and the generated audio.",
+    )
+
+st.markdown("---")
+
 # Generate Button
 st.markdown('<div class="generate-button">', unsafe_allow_html=True)
-if st.button("🎵 Generate!", type="primary"):
+if st.button("🎵 Generate!", type="primary", use_container_width=True):
     if st.session_state.uploaded_file is not None:
         with st.spinner("Processing audio... This may take a moment."):
 
             melody_score, harmony_score, melody_audio, harmony_audio = (
                 songify_app.generate(
-                    melody_params=melody_params, harmony_params=harmony_params
+                    melody_params=melody_params, 
+                    harmony_params=harmony_params,
+                    humanise=humanise_amount / 1000.0,  # Convert ms to seconds
                 )
             )
 
@@ -323,10 +354,12 @@ if st.button("🎵 Generate!", type="primary"):
             print("Melody audio shape:", melody_audio.shape)
             print("Harmony audio shape:", harmony_audio.shape)
 
-            # Combine and normalize
-            generated_audio = utils.mix_audio(
-                melody_audio, harmony_audio, blend=0.5, stereo=True
-            )
+            if include_melody:
+                generated_audio = utils.mix_audio(
+                    melody_audio, harmony_audio, blend=0.5, stereo=True
+                )
+            else:
+                generated_audio = harmony_audio
 
             print("Generated audio shape before mixing:", generated_audio.shape)
 
