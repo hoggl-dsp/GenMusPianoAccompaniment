@@ -18,6 +18,7 @@ dependencies = [
     "music21",
     "streamlit",
     "streamlit-advanced-audio",
+    "silero_vad",
 ]
 
 [tool.setuptools]

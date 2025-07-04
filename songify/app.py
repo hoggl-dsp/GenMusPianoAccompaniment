@@ -12,8 +12,11 @@ import torchaudio
 from streamlit_advanced_audio import WaveSurferOptions, audix
 
 from songify import utils
-from songify.main import (HarmonyGenerationParameters,
-                          MelodyExtractionParameters, SongifyApp)
+from songify.main import (
+    HarmonyGenerationParameters,
+    MelodyExtractionParameters,
+    SongifyApp,
+)
 
 melody_params = MelodyExtractionParameters()
 harmony_params = HarmonyGenerationParameters()
@@ -101,6 +104,7 @@ uploaded_file = st.file_uploader(
     "Choose an audio file",
     type=["wav", "mp3", "flac", "ogg"],
     help="Upload your audio file for processing",
+    key="main_audio_uploader"
 )
 
 if uploaded_file is not None:
@@ -128,15 +132,16 @@ if uploaded_file is not None:
 
         # Create a simple waveform visualization
         fig, ax = plt.subplots(figsize=(12, 3))
-        librosa.display.waveshow(
-            songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
-        )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Amplitude")
-        ax.set_title("Audio Waveform")
-        ax.grid(True, alpha=0.3)
-        st.pyplot(fig)
-        plt.close()
+        if fig is not None and ax is not None:
+            librosa.display.waveshow(
+                songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
+            )
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Amplitude")
+            ax.set_title("Audio Waveform")
+            ax.grid(True, alpha=0.3)
+            st.pyplot(fig)
+            plt.close()
 
     except Exception as e:
         st.error(f"Error loading audio file: {e}")
@@ -157,7 +162,10 @@ with col1:
     onset_algorithm = st.selectbox(
         "Onset algorithm",
         [
-            "Librosa",
+            "rms_energy",
+            "rms_flux",
+            "librosa",
+            "silero"
         ],
         index=0,
     )
@@ -171,11 +179,6 @@ with col1:
         index=0,
     )
 
-    # Frame Size slider
-    frame_size = st.slider(
-        "Frame Size (millis)", min_value=10, max_value=100, value=20, step=1
-    )
-
     # Median Filter slider
     median_filter = st.slider(
         "Median Filter", min_value=1, max_value=11, value=3, step=2
@@ -183,19 +186,40 @@ with col1:
 
     # Note Duration range slider
     note_duration = st.slider(
-        "Note Duration", min_value=0.0, max_value=1.0, value=(0.2, 0.8), step=0.01
+        "Note Duration (s)", min_value=0.02, max_value=1.0, value=(0.1, 1.0), step=0.01
     )
     st.caption(f"min: {note_duration[0]:.2f} - max: {note_duration[1]:.2f}")
+
+    # Offset Absolute Threshold slider
+    offset_absolute_threshold_db = st.slider(
+        "Offset Absolute Threshold (dB)",
+        min_value=-60.0,
+        max_value=-12.0,
+        value=-40.0,
+        step=0.1,
+        help="Threshold for note loudness detection in dB",
+    )
+
+    offset_relative_threshold_db = st.slider(
+        "Offset Relative Threshold (dB)",
+        min_value=-12.0,
+        max_value=-2.0,
+        value=-6.0,
+        step=0.1,
+        help="Relative threshold for note offset detection in dB",
+    )
+
 
     # Dry/Wet slider
     dry_wet = st.slider("Dry/Wet", min_value=0.0, max_value=1.0, value=0.6, step=0.01)
 
     melody_params.onset_detection = onset_algorithm
     melody_params.pitch_algorithm = pitch_algorithm
-    melody_params.frame_size = frame_size
     melody_params.median_filter = median_filter
     melody_params.min_note_duration = note_duration[0]
     melody_params.max_note_duration = note_duration[1]
+    melody_params.offset_absolute_threshold_db = offset_absolute_threshold_db
+    melody_params.offset_relative_threshold_db = offset_relative_threshold_db
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -247,16 +271,33 @@ with col2:
         "Duration Threshold (seconds)",
         min_value=0.1,
         max_value=2.0,
-        value=0.5,
+        value=0.1,
         step=0.01,
     )
-
+    
+    population_size = st.slider(
+        "Initial Population Size",
+        min_value=10,
+        max_value=100,
+        value=75,
+        step=1,
+    )
+    generations = st.slider(
+        "Number of Generations ",
+        min_value=100,
+        max_value=1000,
+        value=750,
+        step=50,
+    )
+    
     harmony_params.chord_melody_congruence = congruence
     harmony_params.chord_variety = variety
     harmony_params.harmonic_flow = flow
     harmony_params.dissonance = dissonance
     harmony_params.cadence = cadence
     harmony_params.duration_threshold = duration_threshold
+    harmony_params.population_size = population_size
+    harmony_params.generations = generations
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Generate Button
