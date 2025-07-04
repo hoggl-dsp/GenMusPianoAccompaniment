@@ -31,8 +31,9 @@ class HarmonyGenerationParameters:
     harmonic_flow: float = 0.5
     dissonance: float = 0.5
     cadence: float = 0.5  
-    duration_threshold: float = 0.5  # seconds
-
+    duration_threshold: float = 0.1  # seconds
+    population_size: int = 100  # Number of individuals in the population
+    generations: int = 1000  # Number of generations for the genetic algorithm
 
 class SongifyApp:
     def __init__(
@@ -110,6 +111,8 @@ class SongifyApp:
             dissonance=harmony_params.dissonance,
             cadence=harmony_params.cadence,
             duration_threshold=harmony_params.duration_threshold,
+            population_size=harmony_params.population_size, 
+            generations=harmony_params.generations
         )
 
         print("Generated Harmony:", generated_harmony)
