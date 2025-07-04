@@ -1,9 +1,10 @@
 import yt_dlp
 import os
 import streamlit as st
+import ffmpeg
 
 @st.cache_resource
-def download_youtube_video(video_url, output_dir):
+def download_youtube_video(video_url, output_dir, extract_audio = True):
     """
     Downloads a YouTube video using yt-dlp and saves it to the specified directory.
     
@@ -36,6 +37,27 @@ def download_youtube_video(video_url, output_dir):
     assert os.path.exists(output_file), f"Downloaded file does not exist: {output_file}"
     return output_file
 
+def extract_audio_from_video(video_file: str, output_dir: str):
+    """
+    Extracts audio from a video file using ffmpeg.
+    
+    Args:
+        video_file (str): The path to the video file.
+        output_dir (str): The directory where the extracted audio will be saved.
+    
+    Returns:
+        str: The path to the extracted audio file.
+    """
+    audio_file = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(video_file))[0]}.mp3")
+    
+    try:
+        ffmpeg.input(video_file).output(audio_file, format='wav').run(overwrite_output=True)
+        print(f"Audio extracted successfully to {audio_file}")
+    except ffmpeg.Error as e:
+        print(f"An error occurred while extracting audio: {e}")
+    
+    return audio_file
+
 
 if __name__ == "__main__":
     video_url = "https://www.youtube.com/watch?v=uvsPzuriDdA"
@@ -44,7 +66,11 @@ if __name__ == "__main__":
 
     os.makedirs(output_dir, exist_ok=True)
 
-    download_youtube_video(video_url, output_dir)
+    video_file = download_youtube_video(video_url, output_dir)
+    audio_file = extract_audio_from_video(video_file, output_dir)
+
+    print(f"Video file saved at: {video_file}")
+    print(f"Audio file saved at: {audio_file}")
 
     
 

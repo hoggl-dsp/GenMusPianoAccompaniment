@@ -122,8 +122,6 @@ with tab3:
     )
 
     if youtube_url:
-        st.info("🚧 YouTube audio loading is not yet implemented. Coming soon!")
-
         with st.spinner("Downloading Youtube Video..."):
             session_temp_dir = get_session_temp_dir()
 
@@ -132,9 +130,15 @@ with tab3:
             )
 
         if video_file:
-            st.success(f"Downloaded YouTube video: {os.path.basename(video_file).split('.')[0]}")
             # Load the audio file into the app
             st.video(video_file)
+
+            audio_file = youtube.extract_audio_from_video(video_file, session_temp_dir)
+            if audio_file:
+                current_audio_file = audio_file
+                audio_source = "youtube"
+                
+                st.success(f"Downloaded YouTube video: {os.path.basename(video_file).split('.')[0]}")
 
 # Process the selected audio source
 if current_audio_file is not None:
@@ -143,12 +147,18 @@ if current_audio_file is not None:
     # Display advanced audio player for the current audio file
     if audio_source == "file":
         upload_options = WaveSurferOptions(
-            wave_color="#2B88D9", progress_color="#b91d47", height=80
+            wave_color="#2B88D9", progress_color="#4ecdc4", height=80
         )
-    else:  # mic recording
+    elif audio_source == "mic":  # mic recording
         upload_options = WaveSurferOptions(
-            wave_color="#ff6b6b", progress_color="#4ecdc4", height=80
+            wave_color="#e6ff67", progress_color="#4ecdc4", height=80
         )
+    elif audio_source == "youtube":  # youtube audio
+        upload_options = WaveSurferOptions(
+            wave_color="#ff4444", progress_color="#4ecdc4", height=80
+        )
+    else:
+        raise ValueError("Unknown audio source")
 
     result = audix(current_audio_file, wavesurfer_options=upload_options)
 
@@ -388,6 +398,7 @@ if st.button("🎵 Generate!", type="primary"):
             st.session_state.melody_score = melody_score
             st.session_state.harmony_score = harmony_score
 
+            st.session_state.generated_audio = output_audio.numpy()
 
         st.success("Audio generated successfully!")
         st.balloons()

@@ -6,6 +6,8 @@ from typing import Any, List, Tuple, Union
 import torch
 import torchaudio
 
+from streamlit.runtime.uploaded_file_manager import UploadedFile
+
 from songify import melody
 from songify import melody_harmonizer as mh
 from songify import utils
@@ -44,7 +46,9 @@ class SongifyApp:
 
     def load_audio(self, streamlit_file):
         # file = os.path.join('data', 'Capn Holt 1.mp3')
-        streamlit_file.seek(0)
+        if isinstance(streamlit_file, UploadedFile):
+            streamlit_file.seek(0)
+        
         self.audio, self.sample_rate = torchaudio.load(streamlit_file)
         self.audio = self.audio / self.audio.abs().max()
 
