@@ -37,7 +37,7 @@ harmony_params = HarmonyGenerationParameters()
 songify_app = SongifyApp()
 
 # Page config
-st.set_page_config(page_title="Audio Processing App", page_icon="🎵", layout="centered")
+st.set_page_config(page_title="Songify", page_icon="🎵", layout="centered")
 
 # Custom CSS for styling
 st.markdown(
@@ -54,6 +54,29 @@ st.markdown(
     font-size: 1.2rem;
     color: #666;
     margin-bottom: 2rem;
+}
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 0 1rem;
+}
+.about-section {
+    text-align: left;
+    flex: 1;
+}
+.github-link {
+    text-align: right;
+    flex: 1;
+}
+.github-link a {
+    color: #333;
+    text-decoration: none;
+    font-size: 1.1rem;
+}
+.github-link a:hover {
+    color: #0366d6;
 }
 .generate-button {
     display: flex;
@@ -81,8 +104,31 @@ if "video_file" not in st.session_state:
 
 # Header
 st.markdown('<h1 class="main-title">Songify</h1>', unsafe_allow_html=True)
+# st.markdown(
+#     '<p class="sub-title">Any sound can be a song XP</p>', unsafe_allow_html=True
+# )
+
+# Header section with About and GitHub link
 st.markdown(
-    '<p class="sub-title">Any sound can be a song XP</p>', unsafe_allow_html=True
+    """
+<div class="header-section">
+    <div class="about-section">
+        <details>
+            <summary><strong>About</strong></summary>
+            <p>Songify transforms any audio into musical compositions by extracting melodies and generating harmonies. Upload audio files, record from your mic, or use YouTube links to create beautiful piano accompaniments.</p>
+            <h3>Team:</h3>
+            <ul>
+                <li>TeamMember1 - <a href="link_to_profile1" target="_blank">Linkedin/Github</a></li>
+        </details>
+    </div>
+    <div class="github-link">
+        <a href="https://github.com/your-username/songify" target="_blank">
+            🐙 GitHub
+        </a>
+    </div>
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
 # Audio Input Section
@@ -534,4 +580,4 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
-st.markdown("*Audio Processing App - Built with Streamlit*")
+st.markdown("**Developed with ❤️ by the Songify team**")
