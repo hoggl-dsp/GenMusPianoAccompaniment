@@ -325,10 +325,12 @@ if st.button("🎵 Generate!", type="primary", use_container_width=True):
             print("Melody audio shape:", melody_audio.shape)
             print("Harmony audio shape:", harmony_audio.shape)
 
-            # Combine and normalize
-            generated_audio = utils.mix_audio(
-                melody_audio, harmony_audio, blend=0.5, stereo=True
-            )
+            if include_melody:
+                generated_audio = utils.mix_audio(
+                    melody_audio, harmony_audio, blend=0.5, stereo=True
+                )
+            else:
+                generated_audio = harmony_audio
 
             print("Generated audio shape before mixing:", generated_audio.shape)
 
