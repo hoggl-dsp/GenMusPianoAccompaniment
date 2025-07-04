@@ -35,7 +35,7 @@ harmony_params = HarmonyGenerationParameters()
 songify_app = SongifyApp()
 
 # Page config
-st.set_page_config(page_title="Audio Processing App", page_icon="🎵", layout="wide")
+st.set_page_config(page_title="Audio Processing App", page_icon="🎵", layout="centered")
 
 # Custom CSS for styling
 st.markdown(
@@ -133,7 +133,7 @@ with tab3:
 
         if st.session_state.video_file:
             # Load the audio file into the app
-            st.video(st.session_state.video_file, width=300)
+            st.video(st.session_state.video_file, width='stretch')
 
             audio_file = youtube.extract_audio_from_video(video_file, session_temp_dir)
             if audio_file:
@@ -325,7 +325,7 @@ with harmony_col:
 
 st.markdown("---")
 
-output_col1, output_col2, output_col3 = st.columns([0.5, 1, 1])
+output_col1, output_col2, output_col3 = st.columns([0.7, 1, 1])
 
 with output_col1:
     include_melody = st.checkbox(
@@ -358,7 +358,7 @@ st.markdown("---")
 
 # Generate Button
 st.markdown('<div class="generate-button">', unsafe_allow_html=True)
-if st.button("🎵 Generate!", type="primary"):
+if st.button("🎵 Generate!", type="primary", use_container_width=True):
     if st.session_state.uploaded_file is not None:
         with st.spinner("Processing audio... This may take a moment."):
 
