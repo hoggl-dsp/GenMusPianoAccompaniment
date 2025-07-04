@@ -1,12 +1,8 @@
-import struct
-import wave
 from io import BytesIO
 
 import librosa
 import matplotlib.pyplot as plt
-import numpy as np
 import streamlit as st
-import symusic
 import torch
 import torchaudio
 from streamlit_advanced_audio import WaveSurferOptions, audix
@@ -42,38 +38,11 @@ st.markdown(
     color: #666;
     margin-bottom: 2rem;
 }
-# .upload-section {
-#     border: 2px dashed #ccc;
-#     border-radius: 10px;
-#     padding: 2rem;
-#     text-align: center;
-#     margin-bottom: 2rem;
-#     background-color: #f9f9f9;
-# }
-# .control-section {
-#     background-color: #f8f9fa;
-#     padding: 1.5rem;
-#     border-radius: 10px;
-#     margin-bottom: 1rem;
-# }
-# .harmonizer-section {
-#     background-color: #f8f9fa;
-#     padding: 1.5rem;
-#     border-radius: 10px;
-#     margin-bottom: 1rem;
-# }
 .generate-button {
     display: flex;
     justify-content: center;
     margin: 2rem 0;
 }
-# .player-section {
-#     border: 2px solid #ccc;
-#     border-radius: 10px;
-#     padding: 2rem;
-#     text-align: center;
-#     margin-bottom: 1rem;
-# }
 .download-section {
     display: flex;
     justify-content: center;
@@ -97,24 +66,64 @@ st.markdown(
     '<p class="sub-title">Any sound can be a song XP</p>', unsafe_allow_html=True
 )
 
-# Audio Upload Section
+# Audio Input Section
 st.markdown('<div class="upload-section">', unsafe_allow_html=True)
-st.markdown("### 🎵 Drag&Drop")
-uploaded_file = st.file_uploader(
-    "Choose an audio file",
-    type=["wav", "mp3", "flac", "ogg"],
-    help="Upload your audio file for processing",
-    key="main_audio_uploader"
-)
+st.markdown("### 🎵 Audio Input")
 
-if uploaded_file is not None:
-    st.session_state.uploaded_file = uploaded_file
-    # Display advanced audio player for uploaded file
-    upload_options = WaveSurferOptions(
-        wave_color="#2B88D9", progress_color="#b91d47", height=80
+# Create tabs for different input types
+tab1, tab2, tab3 = st.tabs(["📎 Audio File", "🎤 Mic Recording", "📺 YouTube Link"])
+
+audio_source = None
+current_audio_file = None
+
+with tab1:
+    st.markdown("**Upload or drag & drop an audio file**")
+    uploaded_file = st.file_uploader(
+        "Choose an audio file",
+        type=["wav", "mp3", "flac", "ogg"],
+        help="Upload your audio file for processing",
+        key="main_audio_uploader",
     )
 
-    result = audix(uploaded_file, wavesurfer_options=upload_options)
+    if uploaded_file is not None:
+        current_audio_file = uploaded_file
+        audio_source = "file"
+
+with tab2:
+    st.markdown("**Record audio using your microphone**")
+    audio_value = st.audio_input("Record a voice message", key="voice_recorder")
+
+    if audio_value is not None:
+        current_audio_file = audio_value
+        audio_source = "mic"
+
+with tab3:
+    st.markdown("**Load audio from YouTube (Coming Soon)**")
+    youtube_url = st.text_input(
+        "Enter YouTube URL",
+        placeholder="https://www.youtube.com/watch?v=...",
+        help="YouTube audio loading feature coming soon!",
+        key="youtube_input",
+    )
+
+    if youtube_url:
+        st.info("🚧 YouTube audio loading is not yet implemented. Coming soon!")
+
+# Process the selected audio source
+if current_audio_file is not None:
+    st.session_state.uploaded_file = current_audio_file
+
+    # Display advanced audio player for the current audio file
+    if audio_source == "file":
+        upload_options = WaveSurferOptions(
+            wave_color="#2B88D9", progress_color="#b91d47", height=80
+        )
+    else:  # mic recording
+        upload_options = WaveSurferOptions(
+            wave_color="#ff6b6b", progress_color="#4ecdc4", height=80
+        )
+
+    result = audix(current_audio_file, wavesurfer_options=upload_options)
 
     # Track playback status
     if result:
@@ -125,28 +134,12 @@ if uploaded_file is not None:
 
     try:
         # Load audio file into SongifyApp
-        songify_app.load_audio(uploaded_file)
-
-        # Waveform visualization placeholder
-        st.markdown("**Waveform + Annotations**")
-
-        # Create a simple waveform visualization
-        fig, ax = plt.subplots(figsize=(12, 3))
-        if fig is not None and ax is not None:
-            librosa.display.waveshow(
-                songify_app.audio.numpy(), sr=songify_app.sample_rate, ax=ax, alpha=0.5
-            )
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Amplitude")
-            ax.set_title("Audio Waveform")
-            ax.grid(True, alpha=0.3)
-            st.pyplot(fig)
-            plt.close()
+        songify_app.load_audio(current_audio_file)
 
     except Exception as e:
         st.error(f"Error loading audio file: {e}")
         st.session_state.uploaded_file = None
-        uploaded_file = None
+        current_audio_file = None
 
 
 st.markdown("</div>", unsafe_allow_html=True)
@@ -161,12 +154,7 @@ with col1:
     # Onset algorithm dropdown
     onset_algorithm = st.selectbox(
         "Onset algorithm",
-        [
-            "rms_energy",
-            "rms_flux",
-            "librosa",
-            "silero"
-        ],
+        ["rms_energy", "rms_flux", "librosa", "silero"],
         index=0,
     )
 
@@ -270,7 +258,7 @@ with col2:
         value=0.1,
         step=0.01,
     )
-    
+
     population_size = st.slider(
         "Initial Population Size",
         min_value=10,
@@ -285,7 +273,7 @@ with col2:
         value=750,
         step=50,
     )
-    
+
     harmony_params.chord_melody_congruence = congruence
     harmony_params.chord_variety = variety
     harmony_params.harmonic_flow = flow
@@ -331,13 +319,13 @@ st.markdown("---")
 
 # Generate Button
 st.markdown('<div class="generate-button">', unsafe_allow_html=True)
-if st.button("🎵 Generate!", type="primary", use_container_width=True):
+if st.button("🎵 Generate!", type="primary"):
     if st.session_state.uploaded_file is not None:
         with st.spinner("Processing audio... This may take a moment."):
 
             melody_score, harmony_score, melody_audio, harmony_audio = (
                 songify_app.generate(
-                    melody_params=melody_params, 
+                    melody_params=melody_params,
                     harmony_params=harmony_params,
                     humanise=humanise_amount / 1000.0,  # Convert ms to seconds
                 )
@@ -387,21 +375,6 @@ st.markdown("### ▶️ Generated Audio Waveform Player")
 
 if st.session_state.generated_audio is not None:
     with st.spinner("Preparing audio visualisation playback. Let it cook..."):
-        # Display waveform
-        fig, ax = plt.subplots(figsize=(12, 4))
-        librosa.display.waveshow(
-            st.session_state.generated_audio,
-            sr=songify_app.sample_rate,
-            ax=ax,
-            alpha=0.5,
-        )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Amplitude")
-        ax.set_title("Generated Audio Waveform")
-        ax.grid(True, alpha=0.3)
-        st.pyplot(fig)
-        plt.close()
-
         # Convert to audio format for playback
         audio_data = st.session_state.generated_audio
         sample_rate = songify_app.sample_rate
