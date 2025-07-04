@@ -1,6 +1,7 @@
 import symusic
 import symusic.types
 import torch
+import random
 
 
 def melody_to_score(melody: list[tuple[int, float, float, float]]):
@@ -63,6 +64,26 @@ def harmony_to_score(chords: list[tuple[list[int], float, float, float]]):
 
     return score
 
+def humanise_score(
+    score: symusic.types.Score,
+    time_deviation: float = 0.01,
+):
+    """
+    Humanise the timing of notes in a symusic Score by adding random variations.
+
+    :param score: The symusic Score to humanise.
+    :param time_variation: Maximum variation in seconds to apply to each note's start time.
+    """
+    for track in score.tracks:
+        for note in track.notes:
+            # Add random variation to the start time
+            variation = random.normalvariate(mu=0.0, sigma=time_deviation)
+            note.time += variation
+            # Ensure the note time does not go negative
+            if note.time < 0:
+                note.time = 0
+    
+    return score
 
 def merge_scores(
     scores: list[symusic.types.Score],
