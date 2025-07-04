@@ -1,4 +1,5 @@
 import os
+import math
 
 import librosa
 import matplotlib.pyplot as plt
@@ -6,7 +7,14 @@ import pesto
 import torch
 import torchaudio
 
+from silero_vad import load_silero_vad, get_speech_timestamps
+
 from songify import utils
+
+
+def next_power_of_two(n):
+    """Return the next power of two greater than or equal to n."""
+    return 2 ** math.ceil(math.log2(n))
 
 
 def estimate_pitch(
@@ -19,11 +27,12 @@ def estimate_pitch(
         timesteps, pitches, confidence, _ = pesto.predict(
             audio, sample_rate, step_size=frame_size_millis
         )
+        timesteps = timesteps / 1000.0
     elif pitch_strategy == "librosa":
         frame_samples = int(sample_rate * frame_size_millis / 1000.0)
         pitches, _, confidence = librosa.pyin(
             audio.numpy(),
-            fmin=librosa.note_to_hz("C2"),
+            fmin=librosa.note_to_hz("C3"),
             fmax=librosa.note_to_hz("C7"),
             sr=sample_rate,
             frame_length=frame_samples,
@@ -32,7 +41,7 @@ def estimate_pitch(
         )
         timesteps = torch.arange(len(pitches)) * (frame_size_millis / 1000.0)
         pitches = torch.from_numpy(pitches)
-        confidence = torch.from_numpy(confidence)
+        confidence = torch.from_numpy(confidence / confidence.max())
     else:
         raise NotImplementedError(
             f"Pitch strategy '{pitch_strategy}' is not implemented."
@@ -43,11 +52,52 @@ def estimate_pitch(
     return timesteps, pitches, confidence
 
 
-def vad(
+def get_rms_energy(
+    audio: torch.Tensor,
+    sample_rate: int,
+    frame_size_millis: int = 10,
+    window: str = "rectangular",
+):
+    """
+    Calculate the RMS energy of the audio signal in frames.
+
+    Args:
+        audio (torch.Tensor): Audio signal.
+        sample_rate (int): Sample rate of the audio.
+        frame_size_millis (int): Size of each frame in milliseconds.
+        window (str): Type of window to apply. Currently only 'rectangular' is supported.
+
+    Returns:
+        torch.Tensor: RMS energy of the audio signal in frames.
+    """
+    frame_size_samples = int(sample_rate * frame_size_millis / 1000.0)
+
+    window = window.lower()
+    if window == "rectangular":
+        window_fn = torch.ones((1, 1, frame_size_samples))
+    else:
+        raise NotImplementedError(f"Window type '{window}' is not implemented.")
+
+    squared_audio = audio**2
+    windowed_power = torch.conv1d(
+        squared_audio.view((1, 1, -1)),
+        window_fn,
+        stride=frame_size_samples,
+        padding=frame_size_samples // 2,
+    ).view(-1)
+    rms = torch.sqrt(windowed_power)
+    return rms
+
+
+def get_vad(
     audio: torch.Tensor,
     sample_rate: int,
     frame_size_millis: int = 10,
     strategy: str = "default",
+    min_voice_duration_millis: int = 100,
+    max_voice_duration_millis: int = 2000,
+    offset_relative_threshold_db: float = -6.0,
+    offset_absolute_threshold_db: float = -48.0,
 ):
     """
     Voice Activity Detection (VAD) to filter out silent parts of the audio.
@@ -56,35 +106,106 @@ def vad(
         audio (torch.Tensor): Audio signal.
         sample_rate (int): Sample rate of the audio.
         frame_size_millis (int): Size of each frame in milliseconds.
-        threshold (float): Energy threshold for VAD.
+        threshold (float): Energy threshold for voice offset estimation.
         strategy (str): Strategy for VAD, currently only 'default' is implemented.
 
     Returns:
         torch.Tensor: Filtered audio signal with silent parts removed.
     """
-    if strategy == "default":
-        denoised_audio = torchaudio.functional.vad(audio, sample_rate)
-        frame_size_samples = int(sample_rate * frame_size_millis / 1000.0)
-        squared_audio = denoised_audio**2
-        windowed_power = torch.conv1d(
-            squared_audio.view((1, 1, -1)),
-            torch.ones((1, 1, frame_size_samples)) / frame_size_samples,
-            stride=frame_size_samples,
-            padding=frame_size_samples // 2,
-        ).view(-1)
-        rms = torch.sqrt(windowed_power)
-        return rms
-    # elif strategy == 'silero':
-    #     model = load_silero_vad()
+    frame_size_samples = int(sample_rate * frame_size_millis / 1000.0)
+    voice_onsets_seconds = None
 
-    #     # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
-    #     # (get_speech_timestamps,_, read_audio, *_) = utils
-    #     target_sample_rate = 16000
-    #     wav = read_audio('en_example.wav', sampling_rate=target_sample_rate)
-    #     # get speech timestamps from full audio file
-    #     speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=target_sample_rate)
+    rms = get_rms_energy(audio, sample_rate, frame_size_millis, window="rectangular")
+    rms_max_pool_kernel_size = 5
+    rms_max_pooled = torch.nn.functional.max_pool1d(
+        rms.view(1, 1, -1),
+        kernel_size=rms_max_pool_kernel_size,
+        stride=1,
+        padding=rms_max_pool_kernel_size // 2,
+    ).view(-1)
+    rms_max_pooled = torch.roll(rms_max_pooled, rms_max_pool_kernel_size // 2)
+    rms_max_pooled[:rms_max_pool_kernel_size // 2] = 0
+
+    rms_absolute_threshold = librosa.db_to_amplitude(offset_absolute_threshold_db).item()
+    rms_relative_threshold = librosa.db_to_amplitude(offset_relative_threshold_db).item()
+
+    if strategy == "rms_energy":
+        voice_activity = (rms > rms_absolute_threshold) & (
+            rms > rms_max_pooled * rms_relative_threshold
+        )
+        return voice_activity
+
+    elif strategy == "librosa":
+        voice_onsets_seconds = librosa.onset.onset_detect(
+            y=audio.numpy(),
+            sr=sample_rate,
+            units="time",
+            backtrack=True,
+            hop_length=frame_size_samples,
+        ).tolist()
+
+    elif strategy == "rms_flux":
+        # Calculate RMS flux
+        rms_flux = torch.roll(rms, -1) - rms
+        rms_flux[-1] = 0
+        rectified_rms_flux = torch.maximum(rms_flux, torch.zeros_like(rms_flux))
+        rectified_rms_flux = rectified_rms_flux / rectified_rms_flux.max()
+        peaks = librosa.util.peak_pick(
+            rectified_rms_flux.numpy(),
+            pre_max=3,
+            post_max=3,
+            pre_avg=3,
+            post_avg=3,
+            delta=0.001,
+            wait=int(min_voice_duration_millis / frame_size_millis),
+        )
+        voice_onsets_seconds = [
+            peak * frame_size_millis / 1000.0 for peak in peaks
+        ]
+
+    elif strategy == "silero":
+        model = load_silero_vad()
+
+        # model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
+        # (get_speech_timestamps,_, read_audio, *_) = utils
+        target_sample_rate = 16000
+        if sample_rate != target_sample_rate:
+            resampled_audio = torchaudio.functional.resample(
+                audio, orig_freq=sample_rate, new_freq=target_sample_rate
+            )
+        voice_timestamps = get_speech_timestamps(
+            resampled_audio,
+            model,
+            sampling_rate=target_sample_rate,
+            return_seconds=True,
+        )
+        # Convert voice_onsets to a boolean mask
+        voice_activity = torch.zeros_like(rms, dtype=torch.bool)
+        for speech in voice_timestamps:
+            start_frame = int(speech["start"] * 1000.0 / frame_size_millis)
+            end_frame = int(speech["end"] * 1000.0 / frame_size_millis)
+            voice_activity[start_frame:end_frame] = True
+        return voice_activity
+
     else:
         raise NotImplementedError(f"VAD strategy '{strategy}' is not implemented.")
+
+    if voice_onsets_seconds is None:
+        raise ValueError(
+            "No voice onsets detected. Check the audio input or VAD strategy."
+        )
+
+    # Convert voice_onsets to a boolean mask
+    voice_activity = torch.zeros_like(rms, dtype=torch.bool)
+
+    for onset in voice_onsets_seconds:
+        start_frame = int(onset * sample_rate / frame_size_millis)
+        end_frame = start_frame + 1
+        while end_frame < len(rms) and rms[end_frame] > rms_absolute_threshold:
+            end_frame += 1
+        voice_activity[start_frame:end_frame] = True
+
+    return voice_activity
 
 
 def extract_melody(
@@ -96,6 +217,9 @@ def extract_melody(
     median_filter_size: int = 5,
     min_note_duration: float = 0.1,
     max_note_duration: float = 2.0,
+    offset_relative_threshold_db: float = -6.0,
+    offset_absolute_threshold_db: float = -48.0,
+    **kwargs,
 ):
     """
     Extract the melody from an audio file.
@@ -122,23 +246,13 @@ def extract_melody(
         2. Applies median filtering to reduce noise
         3. Merges consecutive notes of the same pitch
     """
-    # peaks = estimate_word_boundaries(audio, sample_rate, frame_size_millis, strategy='librosa')
-    if onset_strategy == "librosa":
-        peaks = librosa.onset.onset_detect(
-            y=audio.numpy(), sr=sample_rate, units="time"
-        )
-    else:
-        raise NotImplementedError(
-            f"Onset detection strategy '{onset_strategy}' is not implemented."
-        )
 
     timesteps, pitches, pitch_confidence = estimate_pitch(
         audio, sample_rate, frame_size_millis, pitch_strategy
     )
-    timesteps = timesteps / 1000.0  # Convert to seconds
 
-    # Zero out pitches with low confidence
-    pitches[pitch_confidence < 0.5] = 0
+    # # Zero out pitches with low confidence
+    pitches[pitch_confidence < 0.1] = 0
 
     # Median Filtering
     median_filter_radius = median_filter_size // 2
@@ -147,97 +261,151 @@ def extract_melody(
             pitches[i - median_filter_radius : i + median_filter_radius + 1]
         )
 
+    vad = get_vad(
+        audio,
+        sample_rate,
+        frame_size_millis,
+        strategy=onset_strategy,
+        min_voice_duration_millis=min_note_duration * 1000,
+        max_voice_duration_millis=max_note_duration * 1000,
+        offset_relative_threshold_db=offset_relative_threshold_db,
+        offset_absolute_threshold_db=offset_absolute_threshold_db,
+    )
+
+    rms = get_rms_energy(audio, sample_rate, frame_size_millis, window="rectangular")
+    rms = rms / rms.max()  # Normalize RMS energy
+
+    rms_db = torch.from_numpy(librosa.amplitude_to_db(rms.numpy(), ref=1.0))
+
+    rms_flux = torch.roll(rms, -1) - rms
+    rms_flux[-1] = 0
+    rectified_rms_flux = torch.maximum(rms_flux, torch.zeros_like(rms_flux))
+    rectified_rms_flux = rectified_rms_flux / rectified_rms_flux.max()
+
+    fft_size = next_power_of_two(int(sample_rate * frame_size_millis / 1000.0))
+    spectrogram = torchaudio.functional.spectrogram(
+        audio,
+        pad=0,
+        window=torch.hann_window(fft_size),
+        n_fft=fft_size,
+        hop_length=int(sample_rate * frame_size_millis / 1000.0),
+        win_length=fft_size,
+        power=2,
+        normalized=True,
+    )
+    spectral_flux = torch.roll(spectrogram, -1, dims=-1) - spectrogram
+    spectral_flux[:, -1] = 0
+    rectified_spectral_flux = torch.maximum(
+        spectral_flux, torch.zeros_like(spectral_flux)
+    ).mean(dim=0)
+    rectified_spectral_flux = rectified_spectral_flux / rectified_spectral_flux.max()
+
+    if kwargs.get("ax_plot"):
+        ax = kwargs["ax_plot"]
+
+        assert isinstance(ax, plt.Axes), "ax_plot must be a matplotlib Axes object"
+
+        ax.plot(timesteps, pitches / 127, label="Pitches")
+        ax.plot(timesteps, pitch_confidence, label="Confidence", alpha=0.75)
+        ax.plot(timesteps, rms, label="RMS Energy", alpha=0.75)
+        ax.plot(timesteps, rectified_rms_flux, label="RMS Flux", alpha=0.75)
+        ax.plot(timesteps, rectified_spectral_flux, label="Spectral Flux", alpha=0.75)
+        ax.plot(timesteps, vad.float(), label="VAD", alpha=0.75)
+
     # voice_activity = vad(audio, sample_rate, frame_size_millis)
     # # print(voice_activity.shape)
+    notes = (pitches > 0) & (vad)
+    note_onsets = torch.argwhere(notes.roll(-1) & ~notes).squeeze().tolist()
+    note_offsets = torch.argwhere(~notes.roll(-1) & notes).squeeze().tolist()
 
-    # axs.plot(timesteps.numpy(), pitch_confidence.numpy(), label='Pitch Confidence', color='orange')
-    # axs.plot(timesteps.numpy(), pitches.numpy() / 127.0, label='Pitch (MIDI)', color='blue')
-
-    # axs.plot(timesteps.numpy(), voice_activity.numpy(), label='Voice Activity', color='green')
-
-    # axs.vlines(peaks, ymin=-1.0, ymax=1.0, label='Librosa Peaks', colors='red')
-
-    # start_times = (timesteps / 1000.0).tolist()
-    # durations = (torch.ones_like(timesteps) * 0.99 * (frame_size_millis / 1000.0)).tolist()
-    # pitches = pitches.tolist()
-    # velocities = pitch_confidence.tolist()
-
-    frame_size_secs = frame_size_millis / 1000.0
-    rms_threshold_db = -40.0  # RMS threshold in dB
-    rms_threshold = librosa.db_to_amplitude(rms_threshold_db)
-
-    melody = []
-    for i, peak in enumerate(peaks):
-        next_peak = peaks[i + 1] if i < len(peaks) - 1 else None
-        duration = 0.0
-        frame_idx = int(peak / frame_size_secs)
-        start_frame_index = frame_idx
-
-        while True:
-            if frame_idx >= len(pitches):
-                break
-            if pitches[frame_idx] <= 0:
-                break
-            if next_peak is not None and peak + duration > next_peak:
-                break
-
-            if (
-                audio[
-                    int((peak + duration) * sample_rate) : int(
-                        (peak + duration + frame_size_secs) * sample_rate
-                    )
-                ]
-                .square()
-                .mean()
-                .sqrt()
-                < rms_threshold
-            ):
-                break
-
-            duration += frame_size_secs
-            frame_idx += 1
-
-        if duration <= 0.0:
-            continue
-
-        pitch = pitches[start_frame_index:frame_idx].mode()[0]
-        rms = (
-            audio[int(peak * sample_rate) : int((peak + duration) * sample_rate)]
-            .square()
-            .mean()
-            .sqrt()
+    if kwargs.get("ax_plot"):
+        ax = kwargs["ax_plot"]
+        ax.vlines(
+            timesteps[note_onsets],
+            ymin=0,
+            ymax=1,
+            color="red",
+            label="Note Onsets",
+            alpha=0.5,
         )
-        rms_db = librosa.amplitude_to_db(rms.item(), ref=1.0)
-        vel = 0.2 + 0.8 * (1.0 - rms_db / rms_threshold_db)
-        melody.append((pitch.item(), peak.item(), duration, vel))
-
-    return melody
+        ax.vlines(
+            timesteps[note_offsets],
+            ymin=0,
+            ymax=1,
+            color="green",
+            label="Note Offsets",
+            alpha=0.5,
+        )
 
     melody = []
-    for i, (timestep, pitch, confidence) in enumerate(
-        zip(timesteps, pitches, pitch_confidence)
-    ):
+    for i, (onset, offset) in enumerate(zip(note_onsets, note_offsets)):
+        assert onset < offset, "Onset must be before offset"
+
+        start_time = timesteps[onset].item()
+        duration = timesteps[offset].item() - start_time
+        if duration < min_note_duration:
+            continue
+        if duration > max_note_duration:
+            split_onset = int(torch.argmax(rms_flux[onset + int(min_note_duration * 1000) // frame_size_millis : offset]).item() + onset + min_note_duration * 1000 // frame_size_millis)
+            note_onsets.insert(i + 1, split_onset)
+            note_offsets.insert(i + 1, offset)
+            offset = split_onset - 1
+            duration = timesteps[offset].item() - start_time
+
+        pitch = pitches[onset:offset].mode()[0].item()
         if pitch == 0:
             continue
 
-        if len(melody) > 0 and pitch == melody[-1][0]:
-            last_pitch, last_start, duration, last_vel = melody[-1]
+        note_rms = (rms_db[onset:offset].mean().item() - offset_absolute_threshold_db) / (rms_db.max().item() - offset_absolute_threshold_db)
+        rms_confidence_weight = 0.8
+        velocity = 0.2 + 0.8 * (
+            rms_confidence_weight * note_rms
+            + (1.0 - rms_confidence_weight)
+            * pitch_confidence[onset:offset].mean().item()
+        )
 
-            duration += frame_size_secs
-            melody.pop()
-            melody.append((last_pitch, last_start, duration, last_vel))
-            continue
-
-        start_time = timestep.item()
-        duration = frame_size_secs
-        velocity = confidence.item()
-        melody.append((pitch.item(), start_time, duration, velocity))
+        melody.append((pitch, start_time, duration, velocity))
+    
+    if kwargs.get("ax_plot"):
+        ax = kwargs["ax_plot"]
+        for pitch, start_time, duration, velocity in melody:
+            ax.hlines(
+                pitch / 127,
+                start_time,
+                start_time + duration,
+                color="blue",
+                alpha=0.5,
+                label="Melody Note" if not ax.get_legend_handles_labels()[1] else "",
+            )
+            ax.text(
+                start_time + duration / 2,
+                pitch / 127 + 0.02,
+                f"{pitch}",
+                ha="center",
+                va="bottom",
+            )
 
     return melody
 
 
 if __name__ == "__main__":
-    audio, Fs = torchaudio.load(os.path.join("data", "Capn Holt 1.mp3"))
+    audio, Fs = torchaudio.load(os.path.join("data", "el niño pelon.mp3"))
     audio = audio.mean(dim=0)  # convert to mono
 
-    extract_melody(audio, Fs, pitch_strategy="pesto", frame_size_millis=50)
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    extract_melody(
+        audio,
+        Fs,
+        onset_strategy="rms_energy",
+        pitch_strategy="pesto",
+        frame_size_millis=10,
+        ax_plot=ax,
+    )
+
+    librosa.display.waveshow(
+        audio.numpy(), sr=Fs, ax=ax, alpha=0.5, label="Audio Waveform"
+    )
+    ax.set_xlabel("Time (s)")
+    ax.legend()
+    plt.show()
